@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { AuthPrismBackground } from "@/components/auth";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,14 @@ interface AuthPageShellProps {
 
 /** 登录/选租户等认证页：棱镜 WebGL 底 + 玻璃内容层。 */
 export function AuthPageShell({ children, className, contentClassName }: AuthPageShellProps) {
+  // 全局 html/body/#root 默认 overflow:hidden；认证页内容常超一屏（手机端），需放开文档滚动
+  useEffect(() => {
+    document.documentElement.classList.add("document-scroll");
+    return () => {
+      document.documentElement.classList.remove("document-scroll");
+    };
+  }, []);
+
   return (
     <div className={cn("auth-page-shell relative flex min-h-dvh flex-col", className)}>
       <AuthPrismBackground />

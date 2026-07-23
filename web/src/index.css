@@ -261,7 +261,9 @@
 
 .auth-page-shell {
   isolation: isolate;
-  overflow: hidden;
+  /* 仅裁切横向溢出；纵向交给 document-scroll，避免手机端登录/注册无法滚动 */
+  overflow-x: hidden;
+  overflow-y: visible;
   background-color: var(--background);
   background-image: linear-gradient(
     125deg,
