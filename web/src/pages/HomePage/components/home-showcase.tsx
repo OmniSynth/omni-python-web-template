@@ -1,4 +1,5 @@
 import { HOME_SHOWCASE } from "../data";
+import { RacedCdnImage } from "./raced-cdn-image";
 
 /** 更多产品截图网格。 */
 export function HomeShowcase() {
@@ -17,8 +18,8 @@ export function HomeShowcase() {
               className="surface-glass group overflow-hidden rounded-xl border border-border/60"
             >
               <div className="overflow-hidden border-b border-border/50">
-                <img
-                  src={item.image}
+                <RacedCdnImage
+                  file={item.imageFile}
                   alt={item.imageAlt}
                   loading="lazy"
                   className="h-44 w-full object-cover object-top transition duration-500 group-hover:scale-[1.02] sm:h-52"

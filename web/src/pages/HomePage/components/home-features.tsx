@@ -1,4 +1,5 @@
 import { HOME_FEATURES } from "../data";
+import { RacedCdnImage } from "./raced-cdn-image";
 
 /** 产品功能区：文案 + 界面截图交错展示。 */
 export function HomeFeatures() {
@@ -28,8 +29,8 @@ export function HomeFeatures() {
                 </div>
                 <div className={reverse ? "lg:order-1" : undefined}>
                   <div className="surface-glass overflow-hidden rounded-xl border border-border/60">
-                    <img
-                      src={feature.image}
+                    <RacedCdnImage
+                      file={feature.imageFile}
                       alt={feature.imageAlt}
                       loading="lazy"
                       className="h-auto w-full object-cover object-top"
