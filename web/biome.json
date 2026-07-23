@@ -1,0 +1,120 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.2/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": false
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": ["**", "**/!dist/**", "**/!node_modules/**", "**/!../src/omni_api/web/static/**"]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "jsxQuoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all",
+      "arrowParentheses": "always",
+      "bracketSpacing": true,
+      "bracketSameLine": false
+    },
+    "globals": ["window", "document", "navigator", "console", "localStorage", "sessionStorage"]
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    },
+    "formatter": {
+      "enabled": true
+    },
+    "linter": {
+      "enabled": false
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "domains": {
+      "project": "recommended"
+    },
+    "rules": {
+      "preset": "recommended",
+      "a11y": {
+        "preset": "none"
+      },
+      "complexity": {
+        "noUselessTypeConstraint": "error",
+        "noUselessSwitchCase": "off",
+        "useOptionalChain": "off",
+        "noExcessiveLinesPerFunction": {
+          "level": "warn",
+          "options": {
+            "maxLines": 80,
+            "skipBlankLines": true
+          }
+        }
+      },
+      "correctness": {
+        "noUnusedVariables": "error",
+        "useExhaustiveDependencies": "warn",
+        "useHookAtTopLevel": "error"
+      },
+      "style": {
+        "noNamespace": "error",
+        "noNonNullAssertion": "off",
+        "useAsConstAssertion": "error",
+        "noExcessiveLinesPerFile": {
+          "level": "error",
+          "options": {
+            "maxLines": 500,
+            "skipBlankLines": true
+          }
+        }
+      },
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noArrayIndexKey": "off",
+        "noDeprecatedImports": "error"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/index.html"],
+      "linter": {
+        "enabled": false
+      }
+    },
+    {
+      "includes": ["**/src/pages/**/*.{ts,tsx}"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noExcessiveLinesPerFile": {
+              "level": "error",
+              "options": {
+                "maxLines": 800,
+                "skipBlankLines": true
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  }
+}

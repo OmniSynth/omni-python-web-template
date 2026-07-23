@@ -1,0 +1,632 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --max-width-layout: var(--layout-max);
+  --spacing-header: var(--header-height);
+  --width-sidebar: var(--sidebar-width);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-card-solid: var(--card-solid);
+  --color-sheet: var(--sheet);
+  --color-field: var(--field);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-brand-highlight: var(--brand-highlight);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-table-header: var(--table-header);
+  --color-table-row: var(--table-row);
+  --color-table-row-alt: var(--table-row-alt);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --layout-max: 1680px;
+  --layout-gutter: 1rem;
+  --header-height: 4rem;
+  --sidebar-width: 11.25rem;
+  --radius: 0.5rem;
+  /* 品牌色：科技蓝主色 / 黄点缀 / 中性灰 */
+  --brand-highlight: #f8c818;
+  --foreground: #1a1f2a;
+  --card-foreground: #1a1f2a;
+  --primary: #1677ff;
+  --primary-foreground: #ffffff;
+  --secondary-foreground: #1a1f2a;
+  --muted-foreground: #6b7280;
+  --accent: #e8f3ff;
+  --accent-foreground: #0958d9;
+  --destructive: #fa5151;
+  --ring: #1677ff;
+  --popover-foreground: #1a1f2a;
+  --sidebar-foreground: #1a1f2a;
+
+  /* 登录后：柔白为主（忌纯白刺眼），浅玻璃衬托 */
+  --card-solid: #f7f8fa;
+  --background: #eef0f4;
+  --card: color-mix(in srgb, var(--card-solid) 92%, transparent);
+  --popover: color-mix(in srgb, var(--card-solid) 96%, transparent);
+  /* 右侧抽屉：近不透明柔白 */
+  --sheet: color-mix(in srgb, var(--card-solid) 98%, transparent);
+  --sidebar: color-mix(in srgb, #f5f6f8 90%, transparent);
+  --secondary: #e8eaef;
+  --muted: #e8eaef;
+  /* 输入框：柔白底（仍明显白于 muted，不像禁用） */
+  --field: #f7f8fa;
+  --border: #dce0e6;
+  --input: #cfd4dc;
+  --sidebar-border: #dce0e6;
+  --table-header: color-mix(in srgb, #eef0f3 96%, transparent);
+  --table-row: color-mix(in srgb, var(--card-solid) 97%, transparent);
+  --table-row-alt: color-mix(in srgb, #f0f1f4 94%, transparent);
+  --surface-glass-blur: 16px;
+  /* 登录页专用透明度（对齐 docs/images/login.png） */
+  --auth-panel: color-mix(in srgb, #ffffff 70%, transparent);
+  /* 左侧能力条：更透，才能看出毛玻璃 */
+  --auth-panel-soft: color-mix(in srgb, #ffffff 42%, transparent);
+}
+
+.dark {
+  /* IDEA 风格炭黑：底 #2B2B2B，抬升面 #313335 / #3C3F41 */
+  --brand-highlight: #f8c818;
+  --foreground: #d1d1d1;
+  --card-foreground: #d1d1d1;
+  --primary: #3e6db5;
+  --primary-foreground: #e8e8e8;
+  --secondary-foreground: #d1d1d1;
+  --muted-foreground: #8c8c8c;
+  --accent: #3e4346;
+  --accent-foreground: #6b8fc4;
+  --destructive: #e5484d;
+  --ring: #3e6db5;
+  --popover-foreground: #d1d1d1;
+  --sidebar-foreground: #d1d1d1;
+
+  --card-solid: #313335;
+  --background: #2b2b2b;
+  --card: color-mix(in srgb, var(--card-solid) 92%, transparent);
+  --popover: color-mix(in srgb, #3c3f41 94%, transparent);
+  --sheet: color-mix(in srgb, #3c3f41 96%, transparent);
+  --sidebar: color-mix(in srgb, #313335 94%, transparent);
+  --secondary: #3c3f41;
+  --muted: #3c3f41;
+  --field: #3c3f41;
+  --border: #4a4a4a;
+  --input: #4a4a4a;
+  --sidebar-border: #4a4a4a;
+  --table-header: color-mix(in srgb, #3c3f41 96%, transparent);
+  --table-row: color-mix(in srgb, var(--card-solid) 94%, transparent);
+  --table-row-alt: color-mix(in srgb, #2f2f2f 92%, transparent);
+  --surface-glass-blur: 14px;
+  --auth-panel: color-mix(in srgb, #3c3f41 72%, transparent);
+  --auth-panel-soft: color-mix(in srgb, #3c3f41 38%, transparent);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  body {
+    @apply overflow-hidden bg-background text-foreground antialiased;
+    height: 100%;
+    overscroll-behavior: none;
+    font-family:
+      -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  #root {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* 宣传首页等长页：放开文档滚动（后台 AppShell 仍自管 overflow） */
+  html.document-scroll,
+  html.document-scroll body,
+  html.document-scroll #root {
+    height: auto;
+    min-height: 100%;
+    overflow: auto;
+    overscroll-behavior: auto;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* 旧版 iOS Safari 无 dvh 时回退 vh */
+@supports not (height: 100dvh) {
+  .h-dvh {
+    height: 100vh;
+  }
+  .min-h-dvh {
+    min-height: 100vh;
+  }
+}
+
+/* Base UI ScrollArea：viewport 隐藏原生滚动条，由 ScrollBar 组件绘制；滚动时显示 */
+@layer utilities {
+  .scroll-area-viewport {
+    scrollbar-gutter: stable both-edges;
+    padding-bottom: 8px;
+    overscroll-behavior: none;
+  }
+
+  .scroll-area-viewport-table {
+    padding-bottom: 0;
+    overscroll-behavior: none;
+  }
+
+  .scroll-area-viewport[data-horizontal-scroll],
+  .scroll-area-viewport:has(+ [data-slot="scroll-area-scrollbar"][data-orientation="horizontal"]) {
+    padding-right: 8px;
+  }
+
+  /* 细滚动条：与主色呼应 */
+  .scroll-area-viewport::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scroll-area-viewport::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 6px;
+  }
+
+  .scroll-area-viewport::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--primary) 35%, var(--border));
+    border-radius: 6px;
+  }
+
+  .scroll-area-viewport::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--primary) 55%, var(--border));
+  }
+}
+
+/* 认证页：流动渐变底 + 光斑 + 玻璃面板（参考营销站 glass / gradient-shift） */
+@keyframes auth-gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes auth-blob-drift-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(12%, -10%) scale(1.08);
+  }
+}
+
+@keyframes auth-blob-drift-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1.05);
+  }
+  50% {
+    transform: translate(-14%, 12%) scale(0.95);
+  }
+}
+
+@keyframes auth-blob-drift-c {
+  0%,
+  100% {
+    transform: translate(-6%, 8%) scale(1);
+  }
+  50% {
+    transform: translate(10%, -6%) scale(1.12);
+  }
+}
+
+.auth-page-shell {
+  isolation: isolate;
+  overflow: hidden;
+  background-color: var(--background);
+  background-image: linear-gradient(
+    125deg,
+    color-mix(in srgb, var(--primary) 22%, var(--background)) 0%,
+    var(--background) 42%,
+    color-mix(in srgb, var(--primary) 14%, var(--background)) 68%,
+    color-mix(in srgb, var(--primary) 28%, var(--muted)) 100%
+  );
+  background-size: 200% 200%;
+  animation: auth-gradient-shift 14s ease infinite;
+}
+
+.auth-page-shell__prism {
+  pointer-events: none;
+  opacity: 0.95;
+}
+
+/* 棱镜就绪后：减弱底色与遮罩，让体积光更抢眼 */
+.auth-page-shell:has(.auth-page-shell__prism[data-active]) {
+  background-image: none;
+  background-color: color-mix(in srgb, var(--primary) 8%, var(--background));
+}
+
+.auth-page-shell:has(.auth-page-shell__prism[data-active]) .auth-page-shell__aurora {
+  opacity: 0.35;
+}
+
+.auth-page-shell:has(.auth-page-shell__prism[data-active]) .auth-page-shell__veil {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--background) 6%, transparent),
+    color-mix(in srgb, var(--background) 14%, transparent) 50%,
+    color-mix(in srgb, var(--background) 22%, transparent)
+  );
+}
+
+.dark .auth-page-shell:has(.auth-page-shell__prism[data-active]) {
+  background-color: color-mix(in srgb, var(--primary) 6%, var(--background));
+}
+
+.dark .auth-page-shell:has(.auth-page-shell__prism[data-active]) .auth-page-shell__veil {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--background) 10%, transparent),
+    color-mix(in srgb, var(--background) 20%, transparent) 50%,
+    color-mix(in srgb, var(--background) 32%, transparent)
+  );
+}
+
+.auth-page-shell__aurora {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  transition: opacity 0.4s ease;
+}
+
+.auth-page-shell__blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(3.5rem);
+  opacity: 0.7;
+  will-change: transform;
+}
+
+.auth-page-shell__blob--a {
+  top: -12%;
+  left: -8%;
+  width: min(42rem, 80vw);
+  height: min(42rem, 80vw);
+  background: radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--primary) 55%, transparent), transparent 68%);
+  animation: auth-blob-drift-a 11s ease-in-out infinite;
+}
+
+.auth-page-shell__blob--b {
+  right: -10%;
+  bottom: -18%;
+  width: min(36rem, 70vw);
+  height: min(36rem, 70vw);
+  background: radial-gradient(circle at 60% 40%, color-mix(in srgb, var(--primary) 35%, transparent), transparent 70%);
+  animation: auth-blob-drift-b 15s ease-in-out infinite;
+}
+
+.auth-page-shell__blob--c {
+  top: 38%;
+  left: 42%;
+  width: min(28rem, 55vw);
+  height: min(28rem, 55vw);
+  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent) 50%, transparent), transparent 72%);
+  animation: auth-blob-drift-c 13s ease-in-out infinite;
+}
+
+.auth-page-shell__veil {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--background) 18%, transparent),
+    color-mix(in srgb, var(--background) 28%, transparent) 55%,
+    color-mix(in srgb, var(--background) 40%, transparent)
+  );
+}
+
+.dark .auth-page-shell__blob {
+  opacity: 0.55;
+}
+
+.dark .auth-page-shell__veil {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--background) 22%, transparent),
+    color-mix(in srgb, var(--background) 35%, transparent) 55%,
+    color-mix(in srgb, var(--background) 48%, transparent)
+  );
+}
+
+/* 全局玻璃：登录后偏白实；认证页使用独立透明度 */
+.surface-glass {
+  border-color: var(--border);
+  background-color: var(--card);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--card-solid) 70%, transparent) inset,
+    0 8px 24px color-mix(in srgb, var(--foreground) 4%, transparent);
+  backdrop-filter: blur(var(--surface-glass-blur)) saturate(1.1);
+  -webkit-backdrop-filter: blur(var(--surface-glass-blur)) saturate(1.1);
+}
+
+.surface-glass-strong {
+  border-color: var(--border);
+  background-color: var(--popover);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--card-solid) 75%, transparent) inset,
+    0 12px 28px color-mix(in srgb, var(--foreground) 6%, transparent);
+  backdrop-filter: blur(calc(var(--surface-glass-blur) + 2px)) saturate(1.12);
+  -webkit-backdrop-filter: blur(calc(var(--surface-glass-blur) + 2px)) saturate(1.12);
+}
+
+/* 登录表单卡：中等透明白玻璃（对齐 login.png） */
+.auth-glass-panel {
+  border-color: color-mix(in srgb, var(--border) 80%, transparent);
+  background-color: var(--auth-panel);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #ffffff 70%, transparent) inset,
+    0 18px 40px color-mix(in srgb, var(--foreground) 8%, transparent);
+  backdrop-filter: blur(20px) saturate(1.15);
+  -webkit-backdrop-filter: blur(20px) saturate(1.15);
+}
+
+/* 登录左侧能力条：高透明白玻璃，透出棱镜/光斑 */
+.auth-glass-soft {
+  border-color: color-mix(in srgb, #ffffff 55%, transparent);
+  background-color: var(--auth-panel-soft);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #ffffff 60%, transparent) inset,
+    0 10px 28px color-mix(in srgb, var(--foreground) 5%, transparent);
+  backdrop-filter: blur(20px) saturate(1.35);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+}
+
+.dark .auth-glass-soft {
+  border-color: color-mix(in srgb, #ffffff 18%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #ffffff 12%, transparent) inset,
+    0 10px 28px color-mix(in srgb, #000000 35%, transparent);
+}
+
+/* 全幅内容平面：近白玻璃，衬托表格与筛选 */
+.surface-glass-pane {
+  border-color: var(--border);
+  background-color: var(--card);
+  backdrop-filter: blur(var(--surface-glass-blur)) saturate(1.08);
+  -webkit-backdrop-filter: blur(var(--surface-glass-blur)) saturate(1.08);
+}
+
+/* 带 data-slot 的 UI 基元自动获得毛玻璃（Sheet 单独走 .sheet-surface） */
+[data-slot="card"],
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"],
+[data-slot="popover-content"],
+[data-slot="select-content"],
+[data-slot="tooltip-content"],
+[data-slot="dropdown-menu-content"] {
+  backdrop-filter: blur(var(--surface-glass-blur)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--surface-glass-blur)) saturate(1.2);
+}
+
+/* 右侧抽屉：近白实面 + 轻模糊，边框/阴影克制，避免透出遮罩冷紫 */
+.sheet-surface,
+[data-slot="sheet-content"] {
+  background-color: var(--sheet);
+  border-color: color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: -12px 0 40px color-mix(in srgb, var(--foreground) 6%, transparent);
+  backdrop-filter: blur(20px) saturate(1.02);
+  -webkit-backdrop-filter: blur(20px) saturate(1.02);
+}
+
+.sheet-surface [data-slot="sheet-section"],
+[data-slot="sheet-content"] [data-slot="sheet-section"] {
+  border-color: color-mix(in srgb, var(--border) 55%, transparent);
+  background-color: transparent;
+}
+
+/* 后台壳层氛围底，让半透明面板“透出”层次 */
+.app-shell {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--background);
+}
+
+.app-shell__ambient {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  /* 柔白 + 淡蓝点缀，避免纯白刺眼与暗紫冷调 */
+  background:
+    radial-gradient(ellipse 65% 45% at 8% -8%, color-mix(in srgb, var(--primary) 7%, transparent), transparent 58%),
+    radial-gradient(ellipse 50% 40% at 100% 105%, color-mix(in srgb, var(--primary) 4%, transparent), transparent 52%),
+    linear-gradient(180deg, #f2f4f7, #e8ebf0);
+}
+
+/* 暗色：IDEA 炭黑分层，弱化蓝雾 */
+.dark .app-shell__ambient {
+  background:
+    radial-gradient(ellipse 60% 40% at 6% -6%, color-mix(in srgb, var(--primary) 5%, transparent), transparent 55%),
+    radial-gradient(ellipse 45% 35% at 100% 100%, color-mix(in srgb, var(--primary) 3%, transparent), transparent 50%),
+    linear-gradient(180deg, #2f2f2f, #262626);
+}
+
+.dark .surface-glass {
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #ffffff 6%, transparent) inset,
+    0 8px 20px color-mix(in srgb, #000000 28%, transparent);
+}
+
+.dark .surface-glass-strong {
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #ffffff 8%, transparent) inset,
+    0 12px 28px color-mix(in srgb, #000000 35%, transparent);
+}
+
+.dark .sheet-surface,
+.dark [data-slot="sheet-content"] {
+  box-shadow: -12px 0 40px color-mix(in srgb, #000000 40%, transparent);
+}
+
+.dark .auth-glass-panel {
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #ffffff 8%, transparent) inset,
+    0 18px 40px color-mix(in srgb, #000000 40%, transparent);
+}
+
+.app-shell > *:not(.app-shell__ambient):not(.app-shell__header) {
+  position: relative;
+  z-index: 1;
+}
+
+/* 顶栏高于主内容，避免头像菜单被 surface-glass-pane 盖住 */
+.app-shell > .app-shell__header {
+  position: relative;
+  z-index: 30;
+}
+
+/* Toast 同步玻璃风格 */
+.cn-toast {
+  border-color: var(--border) !important;
+  background: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  backdrop-filter: blur(var(--surface-glass-blur)) saturate(1.2) !important;
+  -webkit-backdrop-filter: blur(var(--surface-glass-blur)) saturate(1.2) !important;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--foreground) 10%, transparent) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface-glass,
+  .surface-glass-strong,
+  .surface-glass-pane,
+  .sheet-surface,
+  .auth-glass-panel,
+  .auth-glass-soft,
+  [data-slot="card"],
+  [data-slot="sheet-content"],
+  [data-slot="dialog-content"],
+  [data-slot="alert-dialog-content"],
+  [data-slot="popover-content"],
+  [data-slot="select-content"],
+  [data-slot="tooltip-content"],
+  .cn-toast {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+@keyframes auth-title-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+/* hero 标题流动渐变（对齐 animate-gradient-x） */
+.auth-gradient-title {
+  background-size: 200% 100%;
+  animation: auth-gradient-shift 3s ease infinite;
+}
+
+.auth-gradient-title-glow {
+  background-size: 200% 100%;
+  animation:
+    auth-gradient-shift 3s ease infinite,
+    auth-title-pulse 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-page-shell,
+  .auth-page-shell__blob,
+  .auth-gradient-title,
+  .auth-gradient-title-glow {
+    animation: none;
+  }
+
+  .auth-page-shell {
+    background-size: 100% 100%;
+  }
+}
+
+/* PageTabBar 下划线展开 */
+.page-tab-trigger {
+  position: relative;
+}
+
+.page-tab-trigger::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  width: 70%;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--primary);
+  transform: translateX(-50%) scaleX(0);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.page-tab-trigger[data-active]::after {
+  transform: translateX(-50%) scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .page-tab-trigger::after {
+    transition: none;
+  }
+}

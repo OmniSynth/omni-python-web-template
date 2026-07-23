@@ -1,0 +1,14 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "cursorpyright.analysis.extraPaths": ["${workspaceFolder}/src"],
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "tailwindCSS.experimental.configFile": "web/src/index.css",
+  "tailwindCSS.includeLanguages": {
+    "typescript": "javascript",
+    "typescriptreact": "javascript"
+  },
+  "css.lint.unknownAtRules": "ignore",
+  "markdown.preview.security": "allow-insecure-local-content"
+}

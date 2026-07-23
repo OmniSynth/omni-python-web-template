@@ -1,0 +1,24 @@
+---
+description: 严格遵守 AGENTS.md（本仓库 AI 编码唯一规则源）
+alwaysApply: true
+---
+
+# 严格遵守 AGENTS.md
+
+本仓库 AI 编码约定的**唯一源**是根目录 [`AGENTS.md`](../../AGENTS.md)。
+
+## 强制
+
+- 开始编码、改架构/接口/主题、增删路由或页面之前，先阅读并遵守 `AGENTS.md`。
+- 冲突时以 `AGENTS.md` 为准；本规则及其他工具说明不得覆盖它。
+- **禁止**在 `.cursor/rules/`、`.agent/rules/` 等处复制 `AGENTS.md` 正文形成平行副本；只允许像本文件这样的「指向唯一源」规则。
+- 与 Claude Code 一致：`CLAUDE.md` 仅为 `@AGENTS.md` 引用，勿另写一套。
+
+## 交付自检（摘自 AGENTS.md 义务）
+
+- 中文注释/文档与用户沟通；无死代码与未使用 import。
+- Python：`uv run`；提交前对照 `AGENTS.md` 与 `uv run scripts/check_python.py`。
+- 前端：`web/` 下 `nvm use node`；改样式遵守 Tailwind/主题约定；提交前 `npm run lint`。
+- 改接口、配置、分层时同步更新对应 `docs/`。
+
+细则（分层、UTC、MySQL DDL、Sheet/表格/表单、Biome 等）一律以 `AGENTS.md` 全文为准，此处不复述。

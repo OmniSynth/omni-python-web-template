@@ -1,0 +1,37 @@
+[mysql]
+host = "172.16.1.3"
+port = 3306
+database = "omni_demo"
+user = "omni"
+password = "123456"
+
+[redis]
+host = "172.16.1.3"
+port = 6379
+db = 9
+password = "123456"
+
+[app]
+host = "0.0.0.0"
+port = 8321
+
+[auth]
+session_ttl_hours = 24
+
+[audit]
+retention_days = 90
+archive_dir = "audit-archive"
+export_batch_size = 5000
+slow_sql_enabled = true
+slow_sql_queue_size = 1000
+slow_sql_explain_enabled = true
+
+[audit.slow_sql_thresholds]
+oltp_warn_ms = 50
+oltp_critical_ms = 100
+polling_warn_ms = 100
+polling_critical_ms = 100
+data_warn_ms = 500
+data_critical_ms = 2000
+artifact_warn_ms = 1000
+artifact_critical_ms = 3000

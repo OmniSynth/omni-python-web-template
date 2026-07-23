@@ -1,0 +1,33 @@
+[project]
+name = "omni-python-web-template"
+version = "0.1.0"
+description = "Omni Synth 开源底座：App/Web/桌面/SaaS 从 0 到 1，撑到百万用户规模"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "asyncmy>=0.2.10",
+    "bcrypt>=5.0.0",
+    "croniter>=6.2.3",
+    "fastapi>=0.138.1",
+    "httpx>=0.28.1",
+    "pydantic-settings>=2.13.0",
+    "redis[hiredis]>=5.0.0",
+    "sqlalchemy[asyncio]>=2.0.48",
+    "uvicorn>=0.34.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/omni_api"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+]

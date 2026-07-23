@@ -1,0 +1,27 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# JetBrains IDEs
+.idea/
+*.iml
+
+# Virtual environments
+.venv
+.cursor/*.log
+
+research-output/
+
+# 前端
+web/node_modules/
+
+# 其他
+audit-archive/
+.DS_Store
+/src/omni_api/web/
+/config/remote.toml
+.pytest_cache/

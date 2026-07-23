@@ -1,0 +1,45 @@
+{
+  "name": "omni-python-web-template",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "biome check .",
+    "format": "biome check --write ."
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.6.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "date-fns": "^4.4.0",
+    "dexie": "^4.4.4",
+    "element-china-area-data": "^6.1.0",
+    "lucide-react": "^0.525.0",
+    "react": "^19.1.0",
+    "react-day-picker": "^10.0.1",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.3",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.3.1",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.2",
+    "@tailwindcss/vite": "^4.3.2",
+    "@types/node": "^24.1.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "tailwindcss": "^4.3.2",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "fsevents@2.3.3": true
+  }
+}
