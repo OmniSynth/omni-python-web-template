@@ -25,3 +25,4 @@ audit-archive/
 /src/omni_api/web/
 /config/remote.toml
 .pytest_cache/
+uv.lock
