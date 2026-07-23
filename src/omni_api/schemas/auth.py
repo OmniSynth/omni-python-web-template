@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from omni_api.schemas.data_scope import DEFAULT_DATA_SCOPE
 from omni_api.schemas.rbac import RoleSummary
-from omni_api.schemas.tenant import RoleDataScopeItem
+from omni_api.schemas.tenant import OrgType, ProvisionCredentials, RoleDataScopeItem
 from omni_api.schemas.utc_datetime import UtcDateTime
 
 
@@ -52,6 +52,25 @@ class LoginResponse(BaseModel):
     token_type: str = "session"
     user: AuthUser
     need_tenant_select: bool = False
+
+
+class RegisterRequest(BaseModel):
+    """公开注册：填写机构信息并开通租户；手机号作为管理员登录账号，密码由系统生成。"""
+
+    name: str = Field(min_length=1, max_length=128, description="机构名称")
+    org_type: OrgType = Field(description="机构类型")
+    credit_code: str = Field(min_length=1, max_length=18, description="18 位统一社会信用代码")
+    phone: str = Field(min_length=11, max_length=20, description="机构联系电话，作为登录账号")
+    province: str = Field(min_length=1, max_length=64)
+    city: str = Field(min_length=1, max_length=64)
+    district: str = Field(min_length=1, max_length=64)
+    region: str = Field(min_length=2, max_length=16, description="区县行政区划码")
+
+
+class RegisterResponse(LoginResponse):
+    """注册成功：会话 + 一次性管理员凭据。"""
+
+    admin_credentials: ProvisionCredentials
 
 
 class SwitchTenantRequest(BaseModel):

@@ -5,10 +5,15 @@ import type { CachedTenantDisplay } from "@/db/types";
 import { registerSessionExpiredHandler } from "@/lib/session-expired";
 import { getSessionToken } from "@/lib/session-token";
 import { type CurrentTenantDisplay, resolveCurrentTenantDisplay } from "@/lib/tenant-display";
-import { authInitialState, createAuthStoreActions, type LoginResult } from "@/stores/auth-store-actions";
+import {
+  authInitialState,
+  createAuthStoreActions,
+  type LoginResult,
+  type RegisterResult,
+} from "@/stores/auth-store-actions";
 import type { AuthUser, BoundTenantInfo, PermissionInfo } from "@/types/auth";
 
-export type { LoginResult };
+export type { LoginResult, RegisterResult };
 
 export interface AuthState {
   token: string | null;
@@ -21,6 +26,16 @@ export interface AuthState {
   hydrate: () => Promise<void>;
   refresh: () => Promise<void>;
   login: (username: string, password: string) => Promise<LoginResult>;
+  register: (body: {
+    name: string;
+    org_type: string;
+    credit_code: string;
+    phone: string;
+    province: string;
+    city: string;
+    district: string;
+    region: string;
+  }) => Promise<RegisterResult>;
   logout: () => Promise<void>;
   switchTenant: (tenantId: number) => Promise<void>;
   reset: () => void;

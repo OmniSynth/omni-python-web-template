@@ -168,6 +168,10 @@ export interface ProvisionCredentials {
   password: string;
 }
 
+export interface RegisterResponse extends LoginResponse {
+  admin_credentials: ProvisionCredentials;
+}
+
 export interface OrganizationCreateResult {
   organization: OrganizationRecord;
   tenant: TenantRecord;

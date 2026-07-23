@@ -22,7 +22,12 @@ class OrgOnboardingService:
         self._orgs = OrgRepo(engine)
         self._tenant_onboarding = TenantOnboardingService(engine)
 
-    async def create_with_tenant(self, body: OrganizationCreate) -> OrganizationCreateResult:
+    async def create_with_tenant(
+        self,
+        body: OrganizationCreate,
+        *,
+        admin_password: str | None = None,
+    ) -> OrganizationCreateResult:
         org = await self._orgs.create_basic(
             name=body.name,
             org_type=body.org_type,
@@ -42,7 +47,10 @@ class OrgOnboardingService:
             system_role_codes=body.system_role_codes,
             enabled=body.enabled,
         )
-        onboard = await self._tenant_onboarding.onboard_from_create(tenant_body)
+        onboard = await self._tenant_onboarding.onboard_from_create(
+            tenant_body,
+            admin_password=admin_password,
+        )
         return OrganizationCreateResult(
             organization=org,
             tenant=onboard.tenant,

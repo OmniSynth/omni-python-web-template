@@ -12,6 +12,8 @@ from omni_api.schemas.auth import (
     AuthUser,
     LoginRequest,
     LoginResponse,
+    RegisterRequest,
+    RegisterResponse,
     SwitchTenantRequest,
 )
 from omni_api.schemas.rbac import PermissionInfo
@@ -19,6 +21,7 @@ from omni_api.schemas.tenant import BoundTenantInfo
 from omni_api.services.audit_service import AuditService
 from omni_api.services.auth_service import AuthError
 from omni_api.services.permission_service import PermissionService
+from omni_api.services.register_service import RegisterService
 from omni_api.services.session_service import SessionService
 
 logger = logging.getLogger(__name__)
@@ -51,6 +54,46 @@ async def login(body: LoginRequest) -> LoginResponse:
     await audit.record_operation(
         category="auth",
         action="login",
+        level="system",
+        actor_id=result.user.id,
+        actor_username=result.user.username,
+        resource_type="user",
+        resource_id=str(result.user.id),
+        result="success",
+        username=result.user.username,
+    )
+    return result
+
+
+@router.post("/register", response_model=RegisterResponse)
+async def register(body: RegisterRequest) -> RegisterResponse:
+    """公开注册：填写机构信息开通租户，系统生成密码；返回会话与一次性凭据。"""
+    audit = AuditService()
+    try:
+        result = await RegisterService().register(body)
+    except ValueError as exc:
+        await audit.record_operation(
+            category="auth",
+            action="register_failed",
+            level="system",
+            result="failure",
+            error_detail=str(exc),
+            username=body.phone,
+        )
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except AuthError as exc:
+        await audit.record_operation(
+            category="auth",
+            action="register_failed",
+            level="system",
+            result="failure",
+            error_detail=str(exc),
+            username=body.phone,
+        )
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await audit.record_operation(
+        category="auth",
+        action="register",
         level="system",
         actor_id=result.user.id,
         actor_username=result.user.username,

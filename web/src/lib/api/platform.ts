@@ -18,6 +18,7 @@ import type {
   OrganizationRecord,
   PermissionInfo,
   PermissionRecord,
+  RegisterResponse,
   RoleRecord,
   TenantAdminUserOption,
   TenantCreateResult,
@@ -34,6 +35,20 @@ export const platformApi = {
       json<LoginResponse>("/api/v1/auth/login", {
         method: "POST",
         body: JSON.stringify({ username, password }),
+      }),
+    register: (body: {
+      name: string;
+      org_type: string;
+      credit_code: string;
+      phone: string;
+      province: string;
+      city: string;
+      district: string;
+      region: string;
+    }) =>
+      json<RegisterResponse>("/api/v1/auth/register", {
+        method: "POST",
+        body: JSON.stringify(body),
       }),
     logout: () => json<{ status: string }>("/api/v1/auth/logout", { method: "POST" }),
     me: () => json<AuthUser>("/api/v1/auth/me"),

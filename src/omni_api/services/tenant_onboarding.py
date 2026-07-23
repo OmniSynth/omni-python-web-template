@@ -44,13 +44,19 @@ class TenantOnboardingService:
         self._users = UserRepo(engine)
         self._admin = TenantAdminService(engine)
 
-    async def onboard_from_create(self, body: TenantCreate) -> TenantOnboardResult:
+    async def onboard_from_create(
+        self,
+        body: TenantCreate,
+        *,
+        admin_password: str | None = None,
+    ) -> TenantOnboardResult:
         tenant = await self._tenants.create(body)
         return await self._finish_onboarding(
             tenant=tenant,
             system_role_codes=body.system_role_codes,
             dept_name=body.name,
             admin_user_id=body.admin_user_id,
+            admin_password=admin_password,
         )
 
     async def _finish_onboarding(
@@ -60,6 +66,7 @@ class TenantOnboardingService:
         system_role_codes: list[str],
         dept_name: str,
         admin_user_id: int | None,
+        admin_password: str | None = None,
     ) -> TenantOnboardResult:
         tenant_id = tenant.id
         await self._system_roles.ensure_schema()
@@ -77,6 +84,7 @@ class TenantOnboardingService:
             tenant=tenant,
             dept_id=dept.id,
             admin_user_id=admin_user_id,
+            admin_password=admin_password,
         )
         refreshed = await self._tenants.get_by_id(tenant_id)
         if refreshed is None:
@@ -94,6 +102,7 @@ class TenantOnboardingService:
         tenant: TenantRecord,
         dept_id: int,
         admin_user_id: int | None,
+        admin_password: str | None = None,
     ) -> ProvisionCredentials | None:
         """开通租户管理员：手动指定 > 手机号匹配已有用户 > 新建用户。"""
         if admin_user_id is not None:
@@ -108,7 +117,7 @@ class TenantOnboardingService:
             await self._admin.bind_admin(tenant_id, user.id, dept_id=dept_id)
             return None
 
-        password = generate_random_password()
+        password = admin_password if admin_password else generate_random_password()
         user = await self._users.create_user(
             UserCreate(
                 username=tenant.phone,

@@ -1,5 +1,6 @@
 import { ArrowRight, Loader2 } from "lucide-react";
 import type { SubmitEvent } from "react";
+import { Link } from "react-router-dom";
 import { AuthFadeIn } from "@/components/auth";
 import { FormField } from "@/components/form/form-field";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,12 @@ export function LoginFormPanel({
               </>
             )}
           </Button>
+          <p className="text-center text-sm text-muted-foreground">
+            还没有账号？{" "}
+            <Link to="/register" className="font-medium text-primary hover:underline">
+              注册开通
+            </Link>
+          </p>
         </form>
       </section>
     </AuthFadeIn>

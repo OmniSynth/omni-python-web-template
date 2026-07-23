@@ -59,12 +59,19 @@ export function resolveRegionSelectionCodes(
       }
     }
   }
+
   if (selection.province) {
-    const province = data.find((p) => p.label === selection.province);
+    const province = data.find((p) => p.label === selection.province) ?? findChildByName(data, selection.province);
     if (province) {
-      const city = selection.city ? province.children?.find((c) => c.label === selection.city) : undefined;
+      const city = selection.city
+        ? (province.children?.find((c) => c.label === selection.city) ??
+          findChildByName(province.children, selection.city))
+        : undefined;
       const district =
-        city && selection.district ? city.children?.find((d) => d.label === selection.district) : undefined;
+        city && selection.district
+          ? (city.children?.find((d) => d.label === selection.district) ??
+            findChildByName(city.children, selection.district))
+          : undefined;
       return {
         provinceCode: province.value,
         cityCode: city?.value ?? "",
@@ -96,6 +103,68 @@ export function findSelectionByDistrictCode(data: RegionNode[], code: string): R
   return null;
 }
 
+/** 去掉省市区等后缀，便于与逆地理结果模糊匹配。 */
+export function normalizeAdminName(name: string): string {
+  return name
+    .trim()
+    .replace(/特别行政区$/u, "")
+    .replace(/壮族自治区$/u, "")
+    .replace(/回族自治区$/u, "")
+    .replace(/维吾尔自治区$/u, "")
+    .replace(/自治区$/u, "")
+    .replace(/(省|市|地区|盟|州)$/u, "")
+    .replace(/(区|县|旗|市)$/u, "");
+}
+
+function adminNamesMatch(a: string, b: string): boolean {
+  const left = a.trim();
+  const right = b.trim();
+  if (!left || !right) return false;
+  if (left === right) return true;
+  if (left.includes(right) || right.includes(left)) return true;
+  const na = normalizeAdminName(left);
+  const nb = normalizeAdminName(right);
+  if (!na || !nb) return false;
+  return na === nb || na.includes(nb) || nb.includes(na);
+}
+
+function findChildByName(nodes: RegionNode[] | undefined, name: string): RegionNode | undefined {
+  if (!nodes?.length || !name.trim()) return undefined;
+  return nodes.find((n) => n.label === name) ?? nodes.find((n) => adminNamesMatch(n.label, name));
+}
+
+/** 按省市区名称（支持模糊）匹配行政区划选择。 */
+export function findSelectionByAdminNames(
+  data: RegionNode[],
+  provinceName: string,
+  cityName: string,
+  districtName: string,
+): RegionSelection | null {
+  const province = findChildByName(data, provinceName);
+  if (!province) return null;
+
+  const cities = province.children ?? [];
+  let city = findChildByName(cities, cityName);
+  // 直辖市等：逆地理城市名常与省名相同，或落在唯一子级
+  if (!city && adminNamesMatch(province.label, cityName)) {
+    city = cities.find((c) => adminNamesMatch(c.label, province.label)) ?? cities[0];
+  }
+  if (!city && cities.length === 1) {
+    city = cities[0];
+  }
+  if (!city) return null;
+
+  const district = findChildByName(city.children, districtName);
+  if (!district) return null;
+
+  return {
+    province: province.label,
+    city: city.label,
+    district: district.label,
+    region: normalizeDistrictCode(district.value),
+  };
+}
+
 /** 根据已选省市区名称查找区县码。 */
 export function findDistrictCode(
   data: RegionNode[],
@@ -103,11 +172,8 @@ export function findDistrictCode(
   cityName: string,
   districtName: string,
 ): string | null {
-  const province = data.find((p) => p.label === provinceName);
-  const city = province?.children?.find((c) => c.label === cityName);
-  const district = city?.children?.find((d) => d.label === districtName);
-  if (!district) return null;
-  return normalizeDistrictCode(district.value);
+  const matched = findSelectionByAdminNames(data, provinceName, cityName, districtName);
+  return matched?.region || null;
 }
 
 export function formatRegionAddress(province: string, city: string, district: string): string {

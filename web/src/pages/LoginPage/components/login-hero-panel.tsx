@@ -31,10 +31,7 @@ export function LoginHeroPanel() {
         <AuthFadeIn delay={360}>
           <ul className="grid gap-3 sm:max-w-md">
             {HIGHLIGHTS.map(({ icon: Icon, title, desc }) => (
-              <li
-                key={title}
-                className="auth-glass-soft flex items-start gap-3 rounded-xl border px-3.5 py-3.5"
-              >
+              <li key={title} className="auth-glass-soft flex items-start gap-3 rounded-xl border px-3.5 py-3.5">
                 <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary">
                   <Icon className="h-4 w-4" aria-hidden />
                 </span>

@@ -6,7 +6,7 @@ import {
   resolveBrandTenantDisplay,
   resolveCurrentTenantDisplay,
 } from "@/lib/tenant-display";
-import { type LoginResult, useAuthStore } from "@/stores/auth-store";
+import { type LoginResult, type RegisterResult, useAuthStore } from "@/stores/auth-store";
 import type { AuthUser, BoundTenantInfo, PermissionInfo } from "@/types/auth";
 
 interface AuthContextValue {
@@ -17,6 +17,16 @@ interface AuthContextValue {
   loading: boolean;
   refreshing: boolean;
   login: (username: string, password: string) => Promise<LoginResult>;
+  register: (body: {
+    name: string;
+    org_type: string;
+    credit_code: string;
+    phone: string;
+    province: string;
+    city: string;
+    district: string;
+    region: string;
+  }) => Promise<RegisterResult>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   switchTenant: (tenantId: number) => Promise<void>;
@@ -26,7 +36,7 @@ interface AuthContextValue {
   defaultHomePath: string | null;
 }
 
-export type { LoginResult };
+export type { LoginResult, RegisterResult };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -38,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loading = useAuthStore((s) => s.loading);
   const refreshing = useAuthStore((s) => s.refreshing);
   const login = useAuthStore((s) => s.login);
+  const register = useAuthStore((s) => s.register);
   const logout = useAuthStore((s) => s.logout);
   const refresh = useAuthStore((s) => s.refresh);
   const switchTenant = useAuthStore((s) => s.switchTenant);
@@ -78,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       refreshing,
       login,
+      register,
       logout,
       refresh,
       switchTenant,
@@ -93,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       refreshing,
       login,
+      register,
       logout,
       refresh,
       switchTenant,

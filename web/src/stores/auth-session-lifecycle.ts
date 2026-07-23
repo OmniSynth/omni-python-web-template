@@ -5,13 +5,18 @@ import type { CachedTenantDisplay } from "@/db/types";
 import { ApiError, api } from "@/lib/api";
 import { readDeviceTenantDisplay } from "@/lib/device-tenant-display";
 import { navTreesEqual, normalizeNavTree, resolveHydratedNavTree, writeDeviceNavTree } from "@/lib/nav-tree-cache";
+import { clearPendingRegisterCredentials, stashPendingRegisterCredentials } from "@/lib/pending-register-credentials";
 import { purgeLocalSession } from "@/lib/purge-local-data";
 import { setSessionToken } from "@/lib/session-token";
 import { readCachedTenantDisplayForUser } from "@/lib/tenant-display";
-import type { AuthUser, BoundTenantInfo, PermissionInfo } from "@/types/auth";
+import type { AuthUser, BoundTenantInfo, PermissionInfo, ProvisionCredentials } from "@/types/auth";
 
 export interface LoginResult {
   needTenantSelect: boolean;
+}
+
+export interface RegisterResult extends LoginResult {
+  credentials: ProvisionCredentials;
 }
 
 export interface AuthSessionSlice {
@@ -141,6 +146,40 @@ export async function loginAuthSession(
   password: string,
 ): Promise<LoginResult> {
   const res = await api.auth.login(username, password);
+  return applyLoginResponse(set, get, res);
+}
+
+export async function registerAuthSession(
+  set: AuthSet,
+  get: AuthGet,
+  body: {
+    name: string;
+    org_type: string;
+    credit_code: string;
+    phone: string;
+    province: string;
+    city: string;
+    district: string;
+    region: string;
+  },
+): Promise<RegisterResult> {
+  const res = await api.auth.register(body);
+  if (res.admin_credentials?.username && res.admin_credentials.password) {
+    // 须在写入会话前暂存，避免 user 更新触发跳转后丢失弹窗时机
+    stashPendingRegisterCredentials(res.admin_credentials);
+  }
+  const login = await applyLoginResponse(set, get, res);
+  return {
+    ...login,
+    credentials: res.admin_credentials,
+  };
+}
+
+async function applyLoginResponse(
+  set: AuthSet,
+  get: AuthGet,
+  res: { session_token: string; need_tenant_select?: boolean },
+): Promise<LoginResult> {
   await writeSessionToken(res.session_token);
   setSessionToken(res.session_token);
   set({ token: res.session_token });
@@ -168,6 +207,7 @@ export async function logoutAuthSession(get: AuthGet): Promise<void> {
   } catch {
     /* 忽略登出 API 失败 */
   }
+  clearPendingRegisterCredentials();
   await purgeLocalSession();
   get().reset();
 }

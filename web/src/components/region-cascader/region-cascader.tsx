@@ -8,6 +8,7 @@ import {
   resolveRegionSelectionCodes,
 } from "@/lib/china-region";
 import { RegionCascaderSelects } from "./region-cascader-selects";
+import { useRegionLocate } from "./use-region-locate";
 
 interface RegionCascaderProps {
   value: RegionSelection;
@@ -16,6 +17,12 @@ interface RegionCascaderProps {
   required?: boolean;
   error?: string;
   portalContainer?: HTMLElement | null;
+  /** 显示「定位当前位置」按钮。 */
+  enableLocate?: boolean;
+  /** 挂载时若尚未选择地区则自动尝试定位一次。 */
+  autoLocate?: boolean;
+  /** 是否展示只读地区编码；默认展示。 */
+  showRegionCode?: boolean;
 }
 
 export function RegionCascader({
@@ -25,11 +32,22 @@ export function RegionCascader({
   required = false,
   error,
   portalContainer: portalContainerProp,
+  enableLocate = false,
+  autoLocate = false,
+  showRegionCode = true,
 }: RegionCascaderProps) {
   const sheetPortal = useSheetPortalContainer();
   const portalContainer = portalContainerProp ?? sheetPortal;
   const [regionData, setRegionData] = useState<RegionNode[] | null>(null);
   const [loadError, setLoadError] = useState("");
+  const { locateAction } = useRegionLocate({
+    enabled: enableLocate,
+    autoLocate,
+    ready: regionData != null,
+    disabled,
+    value,
+    onChange,
+  });
 
   useEffect(() => {
     let active = true;
@@ -104,6 +122,7 @@ export function RegionCascader({
 
   return (
     <RegionCascaderSelects
+      key={value.region || "empty"}
       regionData={regionData}
       selectionCodes={selectionCodes}
       provinceNode={provinceNode}
@@ -113,6 +132,8 @@ export function RegionCascader({
       required={required}
       error={error}
       portalContainer={portalContainer}
+      showRegionCode={showRegionCode}
+      provinceAction={locateAction}
       onProvinceChange={handleProvinceChange}
       onCityChange={handleCityChange}
       onDistrictChange={handleDistrictChange}

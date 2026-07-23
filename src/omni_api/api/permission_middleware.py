@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 _SKIP_PREFIXES = (
     "/api/v1/auth/login",
+    "/api/v1/auth/register",
     "/api/v1/auth/logout",
     "/api/v1/auth/me",
     "/api/v1/auth/nav",

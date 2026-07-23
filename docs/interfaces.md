@@ -11,9 +11,9 @@ Web 静态资源在 `src/omni_api/web/static/`；全局主题见 [web-theme.md](
 
 ## 认证
 
-- 除 `POST /api/v1/auth/login` 与 `GET /api/v1/health` 外，所有 API 须携带 `Authorization: Bearer <session_token>`。
+- 除 `POST /api/v1/auth/login`、`POST /api/v1/auth/register` 与 `GET /api/v1/health` 外，所有 API 须携带 `Authorization: Bearer <session_token>`。
 - **Session 鉴权**（非 JWT）：登录返回 `session_token`（Redis 存储）；详见 [multitenant.md](multitenant.md#session-鉴权)。
-- **管理员账号不写死在代码或 TOML**：通过 `scripts/seed_admin.py` 新建机构开通租户，并将租户管理员绑定为平台 admin。
+- **管理员账号不写死在代码或 TOML**：通过 `scripts/seed_admin.py` 新建机构开通租户，并将租户管理员绑定为平台 admin；也可经公开注册接口自助开通租户。
 - 权限模型为 RBAC + 租户分表，详见 [rbac.md](rbac.md)。`GET /me` 返回 `roles`、`permissions` 与租户上下文；各 API 按权限码校验（无权限 403）。
 
 ### 初始化
@@ -32,6 +32,7 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 |---|---|
 | `/` | 公开产品宣传首页（无需登录） |
 | `/login` | 登录 |
+| `/register` | 注册开通：填写机构信息并开通租户（无需登录） |
 | `/select-tenant` | 多租户选择（登录后自动跳转） |
 | 业务菜单路径 | 登录后进入导航树首个可访问菜单（按 DB `sort_order`，非硬编码） |
 | `/users` | 租户用户管理（需 `menu.tenant_users`） |
@@ -56,6 +57,7 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | POST | `/login` | 账号密码登录，返回 `session_token` |
+| POST | `/register` | 公开注册：必填机构名称/类型/信用代码/手机号/省市区与区划码；系统生成管理员密码，开通机构与租户后返回 `session_token` 与一次性 `admin_credentials`（手机号为账号） |
 | POST | `/logout` | 删除 Redis 会话（需 Bearer） |
 | GET | `/me` | 当前用户、租户角色与权限（从 DB 重载并写回会话；需登录） |
 | GET | `/nav` | 侧栏导航树，按当前租户用户权限过滤（需登录） |

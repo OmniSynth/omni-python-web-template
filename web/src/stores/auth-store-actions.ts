@@ -11,11 +11,13 @@ import {
   type LoginResult,
   loginAuthSession,
   logoutAuthSession,
+  type RegisterResult,
   refreshAuthSession,
+  registerAuthSession,
   switchTenantAuthSession,
 } from "./auth-session-lifecycle";
 
-export type { LoginResult };
+export type { LoginResult, RegisterResult };
 
 const initialState: AuthSessionSlice = {
   token: null,
@@ -74,6 +76,16 @@ function createAuthSessionActions(set: AuthSet, get: AuthGet) {
     hydrate: () => hydrateAuthSession(set),
     refresh: () => refreshAuthSession(set, get, initialState),
     login: (username: string, password: string) => loginAuthSession(set, get, username, password),
+    register: (body: {
+      name: string;
+      org_type: string;
+      credit_code: string;
+      phone: string;
+      province: string;
+      city: string;
+      district: string;
+      region: string;
+    }) => registerAuthSession(set, get, body),
     logout: () => logoutAuthSession(get),
     switchTenant: (tenantId: number) => switchTenantAuthSession(set, get, tenantId),
   };

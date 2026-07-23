@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { FieldError } from "@/components/form/field-error";
 import { RequiredMark } from "@/components/form/required-mark";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,10 @@ interface RegionCascaderSelectsProps {
   required: boolean;
   error?: string;
   portalContainer: HTMLElement | null | undefined;
+  /** 是否展示只读地区编码；默认展示。 */
+  showRegionCode?: boolean;
+  /** 省份标签行右侧操作（如定位图标）。 */
+  provinceAction?: ReactNode;
   onProvinceChange: (value: string) => void;
   onCityChange: (value: string) => void;
   onDistrictChange: (value: string) => void;
@@ -30,6 +35,8 @@ export function RegionCascaderSelects({
   required,
   error,
   portalContainer,
+  showRegionCode = true,
+  provinceAction,
   onProvinceChange,
   onCityChange,
   onDistrictChange,
@@ -39,7 +46,10 @@ export function RegionCascaderSelects({
   return (
     <div className="grid gap-4">
       <div className="grid gap-2">
-        <Label>省份{reqMark}</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label>省份{reqMark}</Label>
+          {provinceAction}
+        </div>
         <Select
           value={selectionCodes.provinceCode || undefined}
           options={regionData.map((p) => ({ value: p.value, label: p.label }))}
@@ -98,18 +108,20 @@ export function RegionCascaderSelects({
           </SelectContent>
         </Select>
       </div>
-      <div className="grid gap-2">
-        <Label htmlFor="tenant-region-code">地区编码</Label>
-        <Input
-          id="tenant-region-code"
-          value={value.region}
-          readOnly
-          disabled
-          className="font-mono text-xs"
-          placeholder="选择区县后自动填写"
-        />
-        <p className="text-xs text-muted-foreground">根据所选区县自动生成行政区划码</p>
-      </div>
+      {showRegionCode ? (
+        <div className="grid gap-2">
+          <Label htmlFor="tenant-region-code">地区编码</Label>
+          <Input
+            id="tenant-region-code"
+            value={value.region}
+            readOnly
+            disabled
+            className="font-mono text-xs"
+            placeholder="选择区县后自动填写"
+          />
+          <p className="text-xs text-muted-foreground">根据所选区县自动生成行政区划码</p>
+        </div>
+      ) : null}
       <FieldError>{error}</FieldError>
     </div>
   );

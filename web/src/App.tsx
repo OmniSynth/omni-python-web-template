@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { BrowserRouter, type RouteObject, useRoutes } from "react-router-dom";
 import { BlockingErrorHost } from "@/components/form/blocking-error-host";
 import { AppShell } from "@/components/layout/AppShell";
+import { PendingRegisterCredentialsHost } from "@/components/PendingRegisterCredentialsHost";
 import { RequireAuth, RequirePermission } from "@/components/RequireAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +14,7 @@ import { pageComponent } from "@/lib/page-registry";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/pages/LoginPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import { RegisterPage } from "@/pages/RegisterPage";
 import { TenantSelectPage } from "@/pages/TenantSelectPage";
 
 const pageFallback = <p className="p-6 text-muted-foreground">加载中…</p>;
@@ -43,6 +45,7 @@ function menuRouteObjects(menus: Array<{ code: string; path: string; componentKe
 const APP_ROUTE_CONFIG: RouteObject[] = [
   { path: "/", element: <HomePage /> },
   { path: "/login", element: <LoginPage /> },
+  { path: "/register", element: <RegisterPage /> },
   {
     element: <RequireAuth />,
     children: [
@@ -67,6 +70,7 @@ export function App() {
           <TooltipProvider delay={200}>
             <BrowserRouter>
               <AppRoutes />
+              <PendingRegisterCredentialsHost />
             </BrowserRouter>
             <Toaster />
             <BlockingErrorHost />
