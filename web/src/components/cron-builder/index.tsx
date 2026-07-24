@@ -1,11 +1,8 @@
-import { useState } from "react";
-import { CronFieldEditor } from "@/components/cron-builder/cron-field-editor";
-import { FormField } from "@/components/form/form-field";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEffect, useRef, useState } from "react";
+import { CronModePanels } from "@/components/cron-builder/cron-mode-panels";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   buildCronExpr,
-  CRON_FIELD_META,
   CRON_MODE_OPTIONS,
   type CronConfig,
   type CronCustomFields,
@@ -13,47 +10,13 @@ import {
   type CronMode,
   defaultCronConfig,
   describeCronExpr,
-  everyMinuteOptions,
-  everySecondOptions,
-  hourOptions,
-  minuteOptions,
   parseCronExpr,
-  weekdayOptions,
 } from "@/lib/cron-builder";
 
 type CronBuilderProps = {
   value: string;
   onChange: (expr: string) => void;
 };
-
-type IntervalOption = { value: string; label: string };
-
-function IntervalSelect({
-  value,
-  options,
-  onChange,
-}: {
-  value: number;
-  options: IntervalOption[];
-  onChange: (next: number) => void;
-}) {
-  return (
-    <FormField label="间隔">
-      <Select value={String(value)} options={options} onValueChange={(next) => onChange(Number(next))}>
-        <SelectTrigger className="h-8">
-          <SelectValue placeholder="选择间隔" />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </FormField>
-  );
-}
 
 function readConfig(value: string, mode: CronMode): CronConfig {
   const parsed = parseCronExpr(value || buildCronExpr(defaultCronConfig()), {
@@ -62,13 +25,26 @@ function readConfig(value: string, mode: CronMode): CronConfig {
   return { ...parsed, mode };
 }
 
+function emitExpr(onChange: (expr: string) => void, lastEmitted: { current: string }, next: string) {
+  lastEmitted.current = next;
+  onChange(next);
+}
+
 export function CronBuilder({ value, onChange }: CronBuilderProps) {
   const [activeMode, setActiveMode] = useState<CronMode>(() => parseCronExpr(value).mode);
+  const lastEmitted = useRef(value);
   const config = readConfig(value, activeMode);
+
+  // 外部回填（打开编辑）时按表达式纠正 Tab，避免仍停在「秒/小时」等错误模式
+  useEffect(() => {
+    if (value === lastEmitted.current) return;
+    lastEmitted.current = value;
+    setActiveMode(parseCronExpr(value).mode);
+  }, [value]);
 
   function apply(patch: Partial<CronConfig>) {
     const next = { ...readConfig(value, activeMode), ...patch, mode: activeMode };
-    onChange(buildCronExpr(next));
+    emitExpr(onChange, lastEmitted, buildCronExpr(next));
   }
 
   function setMode(mode: CronMode) {
@@ -76,13 +52,15 @@ export function CronBuilder({ value, onChange }: CronBuilderProps) {
     const parsed = parseCronExpr(value || buildCronExpr(defaultCronConfig()), {
       preferCustom: mode === "custom",
     });
-    onChange(buildCronExpr({ ...parsed, mode }));
+    emitExpr(onChange, lastEmitted, buildCronExpr({ ...parsed, mode }));
   }
 
   function setCustomField(key: CronFieldKey, field: CronCustomFields[CronFieldKey]) {
     setActiveMode("custom");
     const parsed = parseCronExpr(value || buildCronExpr(defaultCronConfig()), { preferCustom: true });
-    onChange(
+    emitExpr(
+      onChange,
+      lastEmitted,
       buildCronExpr({
         ...parsed,
         mode: "custom",
@@ -96,7 +74,14 @@ export function CronBuilder({ value, onChange }: CronBuilderProps) {
 
   return (
     <div className="space-y-3">
-      <Tabs value={activeMode} onValueChange={(mode) => setMode(mode as CronMode)}>
+      <Tabs
+        value={activeMode}
+        onValueChange={(mode, details) => {
+          // 忽略 Tabs 自动回退/初次选中，防止把「每 N 分钟」改写成秒级 6 段表达式
+          if (details.reason !== "none") return;
+          setMode(mode as CronMode);
+        }}
+      >
         <TabsList className="inline-flex h-8 flex-wrap gap-0.5 p-0.5">
           {CRON_MODE_OPTIONS.map((option) => (
             <TabsTrigger key={option.value} value={option.value} className="h-7 px-2.5 text-xs">
@@ -104,152 +89,7 @@ export function CronBuilder({ value, onChange }: CronBuilderProps) {
             </TabsTrigger>
           ))}
         </TabsList>
-
-        <TabsContent value="every_n_seconds" className="mt-2">
-          <IntervalSelect
-            value={config.everyNSeconds}
-            options={everySecondOptions()}
-            onChange={(next) => apply({ everyNSeconds: next })}
-          />
-        </TabsContent>
-
-        <TabsContent value="every_n_minutes" className="mt-2">
-          <IntervalSelect
-            value={config.everyNMinutes}
-            options={everyMinuteOptions()}
-            onChange={(next) => apply({ everyNMinutes: next })}
-          />
-        </TabsContent>
-
-        <TabsContent value="hourly" className="mt-2">
-          <FormField label="分钟">
-            <Select
-              value={String(config.hourlyMinute)}
-              options={minuteOptions()}
-              onValueChange={(next) => apply({ hourlyMinute: Number(next) })}
-            >
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="选择分钟" />
-              </SelectTrigger>
-              <SelectContent>
-                {minuteOptions().map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-        </TabsContent>
-
-        <TabsContent value="daily" className="mt-2 grid grid-cols-2 gap-2">
-          <FormField label="时">
-            <Select
-              value={String(config.dailyHour)}
-              options={hourOptions()}
-              onValueChange={(next) => apply({ dailyHour: Number(next) })}
-            >
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="时" />
-              </SelectTrigger>
-              <SelectContent>
-                {hourOptions().map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-          <FormField label="分">
-            <Select
-              value={String(config.dailyMinute)}
-              options={minuteOptions()}
-              onValueChange={(next) => apply({ dailyMinute: Number(next) })}
-            >
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="分" />
-              </SelectTrigger>
-              <SelectContent>
-                {minuteOptions().map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-        </TabsContent>
-
-        <TabsContent value="weekly" className="mt-2 space-y-2">
-          <FormField label="星期">
-            <Select
-              value={String(config.weeklyDay)}
-              options={weekdayOptions()}
-              onValueChange={(next) => apply({ weeklyDay: Number(next) })}
-            >
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="星期" />
-              </SelectTrigger>
-              <SelectContent>
-                {weekdayOptions().map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-          <div className="grid grid-cols-2 gap-2">
-            <FormField label="时">
-              <Select
-                value={String(config.weeklyHour)}
-                options={hourOptions()}
-                onValueChange={(next) => apply({ weeklyHour: Number(next) })}
-              >
-                <SelectTrigger className="h-8">
-                  <SelectValue placeholder="时" />
-                </SelectTrigger>
-                <SelectContent>
-                  {hourOptions().map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-            <FormField label="分">
-              <Select
-                value={String(config.weeklyMinute)}
-                options={minuteOptions()}
-                onValueChange={(next) => apply({ weeklyMinute: Number(next) })}
-              >
-                <SelectTrigger className="h-8">
-                  <SelectValue placeholder="分" />
-                </SelectTrigger>
-                <SelectContent>
-                  {minuteOptions().map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="custom" className="mt-2 space-y-1.5">
-          {CRON_FIELD_META.map((meta) => (
-            <CronFieldEditor
-              key={meta.key}
-              meta={meta}
-              value={config.customFields[meta.key]}
-              onChange={(field) => setCustomField(meta.key, field)}
-            />
-          ))}
-        </TabsContent>
+        <CronModePanels config={config} onApply={apply} onCustomField={setCustomField} />
       </Tabs>
 
       <div className="rounded-md border bg-muted/40 px-2.5 py-1.5 text-xs">

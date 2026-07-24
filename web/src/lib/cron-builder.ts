@@ -243,6 +243,49 @@ export function buildCronExpr(config: CronConfig): string {
   }
 }
 
+function parseStepValue(expr: string, min: number, max: number): number | null {
+  const match = expr.trim().match(/^\*\/(\d+)$/);
+  if (!match) return null;
+  const n = Number(match[1]);
+  if (!Number.isInteger(n) || n < min || n > max) return null;
+  return n;
+}
+
+function isFixedSecondZero(second: string): boolean {
+  return second === "0" || second === "00";
+}
+
+/** 从 5 段（分起）或 6 段（秒起，秒须为 0）识别预设模式。 */
+function parsePresetFromMinuteFields(
+  base: CronConfig,
+  minute: string,
+  hour: string,
+  day: string,
+  month: string,
+  weekday: string,
+): CronConfig | null {
+  const everyMinutes = parseStepValue(minute, 1, 59);
+  if (everyMinutes != null && hour === "*" && day === "*" && month === "*" && weekday === "*") {
+    return { ...base, mode: "every_n_minutes", everyNMinutes: everyMinutes };
+  }
+  if (/^\d+$/.test(minute) && hour === "*" && day === "*" && month === "*" && weekday === "*") {
+    return { ...base, mode: "hourly", hourlyMinute: Number(minute) };
+  }
+  if (/^\d+$/.test(minute) && /^\d+$/.test(hour) && day === "*" && month === "*" && weekday === "*") {
+    return { ...base, mode: "daily", dailyMinute: Number(minute), dailyHour: Number(hour) };
+  }
+  if (/^\d+$/.test(minute) && /^\d+$/.test(hour) && day === "*" && month === "*" && /^\d+$/.test(weekday)) {
+    return {
+      ...base,
+      mode: "weekly",
+      weeklyMinute: Number(minute),
+      weeklyHour: Number(hour),
+      weeklyDay: Number(weekday),
+    };
+  }
+  return null;
+}
+
 export function parseCronExpr(expr: string, options?: { preferCustom?: boolean }): CronConfig {
   const base = defaultCronConfig();
   const parts = expr.trim().split(/\s+/).filter(Boolean);
@@ -262,11 +305,14 @@ export function parseCronExpr(expr: string, options?: { preferCustom?: boolean }
   }
   if (parts.length === 6) {
     const [second, minute, hour, day, month, weekday] = parts;
-    if (second.startsWith("*/") && minute === "*" && hour === "*" && day === "*" && month === "*" && weekday === "*") {
-      const n = Number(second.slice(2));
-      if (Number.isInteger(n) && n >= 1 && n <= 59) {
-        return { ...base, mode: "every_n_seconds", everyNSeconds: n };
-      }
+    const everySeconds = parseStepValue(second, 1, 59);
+    if (everySeconds != null && minute === "*" && hour === "*" && day === "*" && month === "*" && weekday === "*") {
+      return { ...base, mode: "every_n_seconds", everyNSeconds: everySeconds };
+    }
+    // 6 段且秒固定为 0 时，与 5 段预设等价（每 N 分钟 / 每小时 / 每天 / 每周）
+    if (isFixedSecondZero(second)) {
+      const preset = parsePresetFromMinuteFields(base, minute, hour, day, month, weekday);
+      if (preset) return preset;
     }
     return {
       ...base,
@@ -275,27 +321,8 @@ export function parseCronExpr(expr: string, options?: { preferCustom?: boolean }
     };
   }
   const [minute, hour, day, month, weekday] = parts;
-  if (minute.startsWith("*/") && hour === "*" && day === "*" && month === "*" && weekday === "*") {
-    const n = Number(minute.slice(2));
-    if (Number.isInteger(n) && n >= 1 && n <= 59) {
-      return { ...base, mode: "every_n_minutes", everyNMinutes: n };
-    }
-  }
-  if (/^\d+$/.test(minute) && hour === "*" && day === "*" && month === "*" && weekday === "*") {
-    return { ...base, mode: "hourly", hourlyMinute: Number(minute) };
-  }
-  if (/^\d+$/.test(minute) && /^\d+$/.test(hour) && day === "*" && month === "*" && weekday === "*") {
-    return { ...base, mode: "daily", dailyMinute: Number(minute), dailyHour: Number(hour) };
-  }
-  if (/^\d+$/.test(minute) && /^\d+$/.test(hour) && day === "*" && month === "*" && /^\d+$/.test(weekday)) {
-    return {
-      ...base,
-      mode: "weekly",
-      weeklyMinute: Number(minute),
-      weeklyHour: Number(hour),
-      weeklyDay: Number(weekday),
-    };
-  }
+  const preset = parsePresetFromMinuteFields(base, minute, hour, day, month, weekday);
+  if (preset) return preset;
   return {
     ...base,
     mode: "custom",

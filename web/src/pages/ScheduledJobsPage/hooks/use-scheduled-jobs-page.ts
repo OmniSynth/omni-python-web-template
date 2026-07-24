@@ -13,6 +13,7 @@ export function useScheduledJobsPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<ScheduledJobRecord | null>(null);
   const [cronExpr, setCronExpr] = useState("*/5 * * * *");
+  const [cronEditorKey, setCronEditorKey] = useState(0);
   const [sectionError, setSectionError] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionCode, setActionCode] = useState<string | null>(null);
@@ -38,6 +39,7 @@ export function useScheduledJobsPage() {
   const openEdit = useCallback((job: ScheduledJobRecord) => {
     setEditing(job);
     setCronExpr(job.cron_expr);
+    setCronEditorKey((key) => key + 1);
     setSectionError("");
     setSheetOpen(true);
   }, []);
@@ -84,6 +86,7 @@ export function useScheduledJobsPage() {
     setEditing,
     cronExpr,
     setCronExpr,
+    cronEditorKey,
     sectionError,
     saving,
     handleSave: actions.handleSave,

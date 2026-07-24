@@ -67,6 +67,7 @@ export function ScheduledJobsPage() {
         editing={page.editing}
         cronExpr={page.cronExpr}
         onCronExprChange={page.setCronExpr}
+        cronEditorKey={page.cronEditorKey}
         sectionError={page.sectionError}
         saving={page.saving}
         onSave={() => void page.handleSave()}

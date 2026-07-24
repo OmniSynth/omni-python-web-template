@@ -11,6 +11,7 @@ type ScheduledJobEditSheetProps = {
   editing: ScheduledJobRecord | null;
   cronExpr: string;
   onCronExprChange: (value: string) => void;
+  cronEditorKey: number;
   sectionError: string;
   saving: boolean;
   onSave: () => void;
@@ -22,6 +23,7 @@ export function ScheduledJobEditSheet({
   editing,
   cronExpr,
   onCronExprChange,
+  cronEditorKey,
   sectionError,
   saving,
   onSave,
@@ -44,7 +46,7 @@ export function ScheduledJobEditSheet({
             <div className="text-sm text-muted-foreground">{editing?.description || "—"}</div>
           </FormField>
           <FormField label="执行计划" required>
-            <CronBuilder key={editing?.code ?? "none"} value={cronExpr} onChange={onCronExprChange} />
+            <CronBuilder key={cronEditorKey} value={cronExpr} onChange={onCronExprChange} />
           </FormField>
         </SheetBody>
         <SheetFooter>
