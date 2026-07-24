@@ -31,6 +31,7 @@ uniform float uInvHeight;
 uniform float uMinAxis;
 uniform float uPxScale;
 uniform float uTimeScale;
+uniform float uStepCount;
 
 vec4 tanh4(vec4 x){
   vec4 e2x = exp(2.0*x);
@@ -96,6 +97,7 @@ void main(){
 
   const int STEPS = 100;
   for (int i = 0; i < STEPS; i++) {
+    if (float(i) >= uStepCount) break;
     p = vec3(f, z);
     p.xz = p.xz * wob;
     p = uRot * p;

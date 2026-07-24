@@ -1,4 +1,5 @@
 import { AUTH_PRISM_FRAG, AUTH_PRISM_VERT } from "./auth-prism-shaders";
+import { applyPrismPerfTier, type PrismQuality, resolvePrismQuality } from "./prism-quality";
 
 export type AuthPrismOptions = {
   height?: number;
@@ -89,13 +90,14 @@ function uniformLocations(gl: WebGLRenderingContext, program: WebGLProgram): Pri
     "uMinAxis",
     "uPxScale",
     "uTimeScale",
+    "uStepCount",
   ] as const;
   const locs: PrismHandles["locs"] = {};
   for (const name of names) locs[name] = gl.getUniformLocation(program, name);
   return locs;
 }
 
-function setStaticUniforms(handles: PrismHandles, options: Required<AuthPrismOptions>): void {
+function setStaticUniforms(handles: PrismHandles, options: Required<AuthPrismOptions>, quality: PrismQuality): void {
   const { gl, locs } = handles;
   const height = Math.max(0.001, options.height);
   const baseHalf = 0.5 * Math.max(0.001, options.baseWidth);
@@ -117,26 +119,32 @@ function setStaticUniforms(handles: PrismHandles, options: Required<AuthPrismOpt
   gl.uniform1f(locs.uInvHeight, 1 / height);
   gl.uniform1f(locs.uMinAxis, Math.min(baseHalf, height));
   gl.uniform1f(locs.uTimeScale, Math.max(0, options.timeScale));
+  gl.uniform1f(locs.uStepCount, quality.stepCount);
 }
 
-function resizePrism(container: HTMLElement, handles: PrismHandles, scale: number): void {
+function resizePrism(container: HTMLElement, handles: PrismHandles, scale: number, quality: PrismQuality): void {
   const { gl, canvas, locs, resolution } = handles;
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const dpr = Math.min(quality.dprCap, window.devicePixelRatio || 1);
   const width = Math.max(1, container.clientWidth);
   const height = Math.max(1, container.clientHeight);
-  canvas.width = Math.floor(width * dpr);
-  canvas.height = Math.floor(height * dpr);
+  const pixelW = Math.max(1, Math.floor(width * dpr * quality.renderScale));
+  const pixelH = Math.max(1, Math.floor(height * dpr * quality.renderScale));
+  if (canvas.width === pixelW && canvas.height === pixelH) return;
+  canvas.width = pixelW;
+  canvas.height = pixelH;
   canvas.style.width = "100%";
   canvas.style.height = "100%";
-  gl.viewport(0, 0, canvas.width, canvas.height);
-  resolution[0] = canvas.width;
-  resolution[1] = canvas.height;
+  gl.viewport(0, 0, pixelW, pixelH);
+  resolution[0] = pixelW;
+  resolution[1] = pixelH;
   gl.uniform2fv(locs.iResolution, resolution);
-  gl.uniform1f(locs.uPxScale, 1 / (0.1 * canvas.height * scale));
+  gl.uniform1f(locs.uPxScale, 1 / (0.1 * pixelH * scale));
 }
 
 /** 在容器内挂载棱镜 WebGL 动画；返回卸载函数。失败时抛错由调用方回退。 */
 export function mountAuthPrism(container: HTMLElement, options: AuthPrismOptions = {}): () => void {
+  const quality = resolvePrismQuality();
+  const clearPerfTier = applyPrismPerfTier(quality.perfTier);
   const resolved: Required<AuthPrismOptions> = {
     height: options.height ?? 3.2,
     baseWidth: options.baseWidth ?? 5.2,
@@ -144,7 +152,7 @@ export function mountAuthPrism(container: HTMLElement, options: AuthPrismOptions
     timeScale: options.timeScale ?? 0.75,
     glow: options.glow ?? 1.55,
     bloom: options.bloom ?? 1.45,
-    noise: options.noise ?? 0.02,
+    noise: options.noise ?? (quality.perfTier === "low" ? 0 : 0.02),
     hueShift: options.hueShift ?? 0.05,
     colorFrequency: options.colorFrequency ?? 1.35,
   };
@@ -157,7 +165,13 @@ export function mountAuthPrism(container: HTMLElement, options: AuthPrismOptions
     height: "100%",
     display: "block",
   });
-  const gl = canvas.getContext("webgl", { alpha: true, antialias: false, premultipliedAlpha: true });
+  const gl = canvas.getContext("webgl", {
+    alpha: true,
+    antialias: false,
+    premultipliedAlpha: true,
+    powerPreference: "high-performance",
+    preserveDrawingBuffer: false,
+  });
   if (!gl) throw new Error("WebGL 不可用");
 
   const program = createProgram(gl);
@@ -176,28 +190,53 @@ export function mountAuthPrism(container: HTMLElement, options: AuthPrismOptions
     offsetPx: new Float32Array(2),
     rot: new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]),
   };
-  setStaticUniforms(handles, resolved);
+  setStaticUniforms(handles, resolved, quality);
   container.appendChild(canvas);
-  resizePrism(container, handles, resolved.scale);
+  resizePrism(container, handles, resolved.scale, quality);
 
   const startedAt = performance.now();
+  const frameInterval = 1000 / quality.maxFps;
   let frame = 0;
+  let lastDrawAt = 0;
+  let visible = true;
+  let pageVisible = document.visibilityState === "visible";
+
   const draw = (now: number) => {
+    frame = requestAnimationFrame(draw);
+    if (!visible || !pageVisible) return;
+    if (now - lastDrawAt < frameInterval) return;
+    lastDrawAt = now;
+    activateGlProgram(gl, program);
     gl.uniform1f(handles.locs.iTime, (now - startedAt) * 0.001);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-    frame = requestAnimationFrame(draw);
   };
   frame = requestAnimationFrame(draw);
 
   const ro = new ResizeObserver(() => {
     activateGlProgram(gl, program);
-    resizePrism(container, handles, resolved.scale);
+    resizePrism(container, handles, resolved.scale, quality);
   });
   ro.observe(container);
+
+  const io = new IntersectionObserver(
+    (entries) => {
+      visible = entries.some((entry) => entry.isIntersecting && entry.intersectionRatio > 0.02);
+    },
+    { threshold: [0, 0.02, 0.1] },
+  );
+  io.observe(container);
+
+  const onVisibility = () => {
+    pageVisible = document.visibilityState === "visible";
+  };
+  document.addEventListener("visibilitychange", onVisibility);
 
   return () => {
     cancelAnimationFrame(frame);
     ro.disconnect();
+    io.disconnect();
+    document.removeEventListener("visibilitychange", onVisibility);
+    clearPerfTier();
     if (canvas.parentElement === container) container.removeChild(canvas);
     gl.deleteProgram(program);
   };
