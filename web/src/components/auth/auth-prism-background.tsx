@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { mountAuthPrism } from "./mount-auth-prism";
+import { shouldSkipPrismWebGl } from "./prism-quality";
 
-/** 认证页全屏棱镜背景（WebGL）；不可用时由外层 CSS 光斑兜底。 */
+/** 认证页全屏棱镜背景（WebGL）；卡顿时自动定格或回退 CSS 光斑。 */
 export function AuthPrismBackground() {
   const hostRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
@@ -10,6 +11,7 @@ export function AuthPrismBackground() {
     const host = hostRef.current;
     if (!host) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (shouldSkipPrismWebGl()) return;
 
     try {
       const dispose = mountAuthPrism(host, {
@@ -19,10 +21,12 @@ export function AuthPrismBackground() {
         timeScale: 0.75,
         glow: 1.55,
         bloom: 1.45,
-        // 与 logo 蓝系对齐，不做绿色相偏移
         hueShift: 0.05,
         colorFrequency: 1.35,
         noise: 0.02,
+        onModeChange: (mode) => {
+          if (mode === "css") setActive(false);
+        },
       });
       setActive(true);
       return () => {
