@@ -1,10 +1,10 @@
-/** 图形化 cron 配置与标准 5 段表达式互转。 */
+/** 图形化 cron 配置与 5/6 段表达式互转（6 段含秒）。 */
 
-export type CronMode = "every_n_minutes" | "hourly" | "daily" | "weekly" | "custom";
+export type CronMode = "every_n_seconds" | "every_n_minutes" | "hourly" | "daily" | "weekly" | "custom";
 
 export type CronFieldMode = "any" | "step" | "specific" | "range";
 
-export type CronFieldKey = "minute" | "hour" | "day" | "month" | "weekday";
+export type CronFieldKey = "second" | "minute" | "hour" | "day" | "month" | "weekday";
 
 export type CronFieldConfig = {
   mode: CronFieldMode;
@@ -18,6 +18,7 @@ export type CronCustomFields = Record<CronFieldKey, CronFieldConfig>;
 
 export type CronConfig = {
   mode: CronMode;
+  everyNSeconds: number;
   everyNMinutes: number;
   hourlyMinute: number;
   dailyHour: number;
@@ -47,6 +48,14 @@ export const CRON_FIELD_MODE_OPTIONS: Array<{ value: CronFieldMode; label: strin
 ];
 
 export const CRON_FIELD_META: CronFieldMeta[] = [
+  {
+    key: "second",
+    label: "秒",
+    min: 0,
+    max: 59,
+    stepOptions: [1, 2, 3, 5, 10, 15, 20, 30],
+    valueLabel: (value) => String(value).padStart(2, "0"),
+  },
   {
     key: "minute",
     label: "分钟",
@@ -90,6 +99,7 @@ export const CRON_FIELD_META: CronFieldMeta[] = [
 ];
 
 export const CRON_MODE_OPTIONS: Array<{ value: CronMode; label: string }> = [
+  { value: "every_n_seconds", label: "每隔 N 秒" },
   { value: "every_n_minutes", label: "每隔 N 分钟" },
   { value: "hourly", label: "每小时" },
   { value: "daily", label: "每天" },
@@ -109,6 +119,7 @@ export function defaultCronFieldConfig(min = 0): CronFieldConfig {
 
 export function defaultCronCustomFields(): CronCustomFields {
   return {
+    second: defaultCronFieldConfig(0),
     minute: defaultCronFieldConfig(0),
     hour: defaultCronFieldConfig(0),
     day: defaultCronFieldConfig(1),
@@ -120,6 +131,7 @@ export function defaultCronCustomFields(): CronCustomFields {
 export function defaultCronConfig(): CronConfig {
   return {
     mode: "every_n_minutes",
+    everyNSeconds: 5,
     everyNMinutes: 5,
     hourlyMinute: 0,
     dailyHour: 9,
@@ -192,8 +204,20 @@ export function parseFieldExpr(expr: string, min: number, max: number): CronFiel
 }
 
 function parseCustomFields(parts: string[]): CronCustomFields {
+  if (parts.length === 6) {
+    const [second, minute, hour, day, month, weekday] = parts;
+    return {
+      second: parseFieldExpr(second ?? "*", 0, 59),
+      minute: parseFieldExpr(minute ?? "*", 0, 59),
+      hour: parseFieldExpr(hour ?? "*", 0, 23),
+      day: parseFieldExpr(day ?? "*", 1, 31),
+      month: parseFieldExpr(month ?? "*", 1, 12),
+      weekday: parseFieldExpr(weekday ?? "*", 0, 6),
+    };
+  }
   const [minute, hour, day, month, weekday] = parts;
   return {
+    second: { ...defaultCronFieldConfig(0), mode: "specific", specific: [0] },
     minute: parseFieldExpr(minute ?? "*", 0, 59),
     hour: parseFieldExpr(hour ?? "*", 0, 23),
     day: parseFieldExpr(day ?? "*", 1, 31),
@@ -204,6 +228,8 @@ function parseCustomFields(parts: string[]): CronCustomFields {
 
 export function buildCronExpr(config: CronConfig): string {
   switch (config.mode) {
+    case "every_n_seconds":
+      return `*/${clampInt(config.everyNSeconds, 1, 59)} * * * * *`;
     case "every_n_minutes":
       return `*/${clampInt(config.everyNMinutes, 1, 59)} * * * *`;
     case "hourly":
@@ -219,8 +245,8 @@ export function buildCronExpr(config: CronConfig): string {
 
 export function parseCronExpr(expr: string, options?: { preferCustom?: boolean }): CronConfig {
   const base = defaultCronConfig();
-  const parts = expr.trim().split(/\s+/);
-  if (parts.length !== 5) {
+  const parts = expr.trim().split(/\s+/).filter(Boolean);
+  if (parts.length !== 5 && parts.length !== 6) {
     return {
       ...base,
       mode: "custom",
@@ -228,6 +254,20 @@ export function parseCronExpr(expr: string, options?: { preferCustom?: boolean }
     };
   }
   if (options?.preferCustom) {
+    return {
+      ...base,
+      mode: "custom",
+      customFields: parseCustomFields(parts),
+    };
+  }
+  if (parts.length === 6) {
+    const [second, minute, hour, day, month, weekday] = parts;
+    if (second.startsWith("*/") && minute === "*" && hour === "*" && day === "*" && month === "*" && weekday === "*") {
+      const n = Number(second.slice(2));
+      if (Number.isInteger(n) && n >= 1 && n <= 59) {
+        return { ...base, mode: "every_n_seconds", everyNSeconds: n };
+      }
+    }
     return {
       ...base,
       mode: "custom",
@@ -279,6 +319,8 @@ function describeField(field: CronFieldConfig, meta: CronFieldMeta): string | nu
 export function describeCronExpr(expr: string, options?: { preferCustom?: boolean }): string {
   const config = parseCronExpr(expr, options);
   switch (config.mode) {
+    case "every_n_seconds":
+      return `每 ${config.everyNSeconds} 秒执行一次`;
     case "every_n_minutes":
       return `每 ${config.everyNMinutes} 分钟执行一次`;
     case "hourly":
@@ -291,7 +333,7 @@ export function describeCronExpr(expr: string, options?: { preferCustom?: boolea
       const parts = CRON_FIELD_META.map((meta) => describeField(config.customFields[meta.key], meta)).filter(
         (part): part is string => Boolean(part),
       );
-      return parts.length > 0 ? parts.join("；") : "每分钟均可执行";
+      return parts.length > 0 ? parts.join("；") : "每秒均可执行";
     }
   }
 }
@@ -318,6 +360,13 @@ export function everyMinuteOptions() {
   return [1, 2, 3, 5, 10, 15, 20, 30].map((value) => ({
     value: String(value),
     label: `每 ${value} 分钟`,
+  }));
+}
+
+export function everySecondOptions() {
+  return [1, 2, 3, 5, 10, 15, 20, 30].map((value) => ({
+    value: String(value),
+    label: `每 ${value} 秒`,
   }));
 }
 

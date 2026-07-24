@@ -7,22 +7,32 @@ type ScheduledJobActionsOptions = {
   load: () => Promise<void>;
   editing: ScheduledJobRecord | null;
   cronExpr: string;
+  triggering: ScheduledJobRecord | null;
   setActionCode: (code: string | null) => void;
   setSectionError: (message: string) => void;
   setSaving: (saving: boolean) => void;
   setSheetOpen: (open: boolean) => void;
   setEditing: (job: ScheduledJobRecord | null) => void;
+  setExecuteOpen: (open: boolean) => void;
+  setTriggering: (job: ScheduledJobRecord | null) => void;
+  setExecuteError: (message: string) => void;
+  setExecuteSubmitting: (submitting: boolean) => void;
 };
 
 export function useScheduledJobsPageActions({
   load,
   editing,
   cronExpr,
+  triggering,
   setActionCode,
   setSectionError,
   setSaving,
   setSheetOpen,
   setEditing,
+  setExecuteOpen,
+  setTriggering,
+  setExecuteError,
+  setExecuteSubmitting,
 }: ScheduledJobActionsOptions) {
   const runAction = useCallback(
     async (job: ScheduledJobRecord, action: () => Promise<unknown>, successMessage: string) => {
@@ -48,10 +58,39 @@ export function useScheduledJobsPageActions({
     [load, setActionCode],
   );
 
-  const handleTrigger = useCallback(
-    (job: ScheduledJobRecord) =>
-      runAction(job, () => api.scheduledJobs.trigger(job.code), "同步任务已开始，请稍后刷新查看结果"),
-    [runAction],
+  const openExecute = useCallback(
+    (job: ScheduledJobRecord) => {
+      if (!job.requires_tenant) {
+        void runAction(job, () => api.scheduledJobs.trigger(job.code), `已触发「${job.name}」`);
+        return;
+      }
+      setTriggering(job);
+      setExecuteError("");
+      setExecuteOpen(true);
+    },
+    [runAction, setExecuteError, setExecuteOpen, setTriggering],
+  );
+
+  const handleConfirmExecute = useCallback(
+    async (tenantId: number) => {
+      if (!triggering) return;
+      setExecuteSubmitting(true);
+      setExecuteError("");
+      setActionCode(triggering.code);
+      try {
+        const result = await api.scheduledJobs.trigger(triggering.code, { tenant_id: tenantId });
+        showToastSuccess(result.message || "同步任务已开始，请稍后刷新查看结果");
+        setExecuteOpen(false);
+        setTriggering(null);
+        await load();
+      } catch (error) {
+        setExecuteError(error instanceof Error ? error.message : "执行失败");
+      } finally {
+        setExecuteSubmitting(false);
+        setActionCode(null);
+      }
+    },
+    [load, setActionCode, setExecuteError, setExecuteOpen, setExecuteSubmitting, setTriggering, triggering],
   );
 
   const handleStart = useCallback(
@@ -82,7 +121,8 @@ export function useScheduledJobsPageActions({
   }, [cronExpr, editing, load, setEditing, setSaving, setSectionError, setSheetOpen]);
 
   return {
-    handleTrigger,
+    openExecute,
+    handleConfirmExecute,
     handleStart,
     handleStop,
     handleSave,

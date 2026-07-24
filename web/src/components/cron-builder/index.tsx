@@ -14,6 +14,7 @@ import {
   defaultCronConfig,
   describeCronExpr,
   everyMinuteOptions,
+  everySecondOptions,
   hourOptions,
   minuteOptions,
   parseCronExpr,
@@ -24,6 +25,35 @@ type CronBuilderProps = {
   value: string;
   onChange: (expr: string) => void;
 };
+
+type IntervalOption = { value: string; label: string };
+
+function IntervalSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: number;
+  options: IntervalOption[];
+  onChange: (next: number) => void;
+}) {
+  return (
+    <FormField label="间隔">
+      <Select value={String(value)} options={options} onValueChange={(next) => onChange(Number(next))}>
+        <SelectTrigger className="h-8">
+          <SelectValue placeholder="选择间隔" />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </FormField>
+  );
+}
 
 function readConfig(value: string, mode: CronMode): CronConfig {
   const parsed = parseCronExpr(value || buildCronExpr(defaultCronConfig()), {
@@ -75,25 +105,20 @@ export function CronBuilder({ value, onChange }: CronBuilderProps) {
           ))}
         </TabsList>
 
+        <TabsContent value="every_n_seconds" className="mt-2">
+          <IntervalSelect
+            value={config.everyNSeconds}
+            options={everySecondOptions()}
+            onChange={(next) => apply({ everyNSeconds: next })}
+          />
+        </TabsContent>
+
         <TabsContent value="every_n_minutes" className="mt-2">
-          <FormField label="间隔">
-            <Select
-              value={String(config.everyNMinutes)}
-              options={everyMinuteOptions()}
-              onValueChange={(next) => apply({ everyNMinutes: Number(next) })}
-            >
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="选择间隔" />
-              </SelectTrigger>
-              <SelectContent>
-                {everyMinuteOptions().map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
+          <IntervalSelect
+            value={config.everyNMinutes}
+            options={everyMinuteOptions()}
+            onChange={(next) => apply({ everyNMinutes: next })}
+          />
         </TabsContent>
 
         <TabsContent value="hourly" className="mt-2">

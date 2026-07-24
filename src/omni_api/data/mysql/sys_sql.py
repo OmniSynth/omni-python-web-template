@@ -73,9 +73,11 @@ CREATE TABLE IF NOT EXISTS {SYS_TENANT} (
     phone VARCHAR(20) NOT NULL DEFAULT ''{cmt("联系电话")},
     admin_user_id BIGINT NULL{cmt("管理员用户ID")},
     enabled TINYINT NOT NULL DEFAULT 1{ENABLED_FLAG},
+    expires_at DATETIME(6) NULL{cmt("套餐到期时间(UTC naive)；空为永不过期")},
     {AUDIT_COLUMN_DEFS.strip()},
     KEY idx_sys_tenant_region (region),
-    KEY idx_sys_tenant_admin (admin_user_id)
+    KEY idx_sys_tenant_admin (admin_user_id),
+    KEY idx_sys_tenant_expiry (expires_at, enabled)
 );
 """
 

@@ -70,6 +70,7 @@ class TenantRecord(BaseModel):
     admin_username: str | None = None
     admin_display_name: str | None = None
     enabled: bool
+    expires_at: UtcDateTime | None = None
     created_at: UtcDateTime
     updated_at: UtcDateTime
 
@@ -81,6 +82,25 @@ class TenantAdminUserOption(BaseModel):
     username: str
     display_name: str
     bound: bool = False
+
+
+class TenantOptionRecord(BaseModel):
+    """租户选择器轻量项（含关联机构信用代码）。"""
+
+    id: int
+    code: str
+    name: str
+    phone: str = ""
+    org_name: str = ""
+    org_credit_code: str = ""
+    enabled: bool
+
+
+class PaginatedTenantOptions(BaseModel):
+    items: list[TenantOptionRecord]
+    total: int
+    page: int
+    page_size: int
 
 
 class TenantCreate(BaseModel):
@@ -101,6 +121,10 @@ class TenantCreate(BaseModel):
         description="绑定的预置系统角色",
     )
     enabled: bool = True
+    expires_at: UtcDateTime | None = Field(
+        default=None,
+        description="套餐到期时间；不传则默认注册后 7 天到期",
+    )
 
 
 class TenantUpdate(BaseModel):
@@ -112,6 +136,7 @@ class TenantUpdate(BaseModel):
     phone: str | None = Field(default=None, max_length=20)
     admin_user_id: int | None = Field(default=None, gt=0, description="更换租户管理员")
     enabled: bool | None = None
+    expires_at: UtcDateTime | None = Field(default=None, description="套餐到期时间；传 null 表示永不过期")
 
 
 class ProvisionCredentials(BaseModel):

@@ -16,8 +16,11 @@ from omni_api.data.redis.client import redis_client
 _TOKEN_RE = re.compile(r"^[0-9a-f]{32}$")
 _SESSION_PREFIX = "session:"
 _USER_SESSIONS_PREFIX = "user_sessions:"
+_KICK_REASON_PREFIX = "session_kick:"
+_KICK_REASON_TTL_SECONDS = 300
 _MEM_SESSIONS: dict[str, tuple[float, dict[str, Any]]] = {}
 _MEM_USER_TOKENS: dict[int, set[str]] = {}
+_MEM_KICK_REASONS: dict[str, tuple[float, str]] = {}
 
 
 def _session_key(token: str) -> str:
@@ -26,6 +29,10 @@ def _session_key(token: str) -> str:
 
 def _user_sessions_key(user_id: int) -> str:
     return f"{_USER_SESSIONS_PREFIX}{user_id}"
+
+
+def _kick_reason_key(token: str) -> str:
+    return f"{_KICK_REASON_PREFIX}{token}"
 
 
 def _token_str(token: bytes | str) -> str:
@@ -110,7 +117,7 @@ class SessionStore:
             _memory_set(token, current, self.ttl_seconds)
         return current
 
-    def delete(self, token: str) -> None:
+    def delete(self, token: str, *, reason: str | None = None) -> None:
         if not is_valid_token(token):
             return
         data = self.get(token)
@@ -119,11 +126,46 @@ class SessionStore:
             self._redis.delete(key)
             if data and data.get("user_id") is not None:
                 self._redis.srem(_user_sessions_key(int(data["user_id"])), token)
+            if reason:
+                self._redis.setex(
+                    _kick_reason_key(token), _KICK_REASON_TTL_SECONDS, reason
+                )
         except redis.RedisError:
-            pass
+            if reason:
+                _MEM_KICK_REASONS[token] = (
+                    time.time() + _KICK_REASON_TTL_SECONDS,
+                    reason,
+                )
         _MEM_SESSIONS.pop(token, None)
         if data and data.get("user_id") is not None:
             _MEM_USER_TOKENS.get(int(data["user_id"]), set()).discard(token)
+        if reason and token not in _MEM_KICK_REASONS:
+            # Redis 成功写入时同步一份内存，供 Redis 瞬时不可达时的 take 回退
+            _MEM_KICK_REASONS[token] = (
+                time.time() + _KICK_REASON_TTL_SECONDS,
+                reason,
+            )
+
+    def take_kick_reason(self, token: str) -> str | None:
+        """读取并清除强制下线原因（供 401 返回明确文案）。"""
+        if not is_valid_token(token):
+            return None
+        try:
+            key = _kick_reason_key(token)
+            raw = self._redis.get(key)
+            if raw is not None:
+                self._redis.delete(key)
+                _MEM_KICK_REASONS.pop(token, None)
+                return _token_str(raw)
+        except redis.RedisError:
+            pass
+        item = _MEM_KICK_REASONS.pop(token, None)
+        if item is None:
+            return None
+        expires_at, reason = item
+        if expires_at <= time.time():
+            return None
+        return reason
 
     def revoke_user(self, user_id: int) -> None:
         usk = _user_sessions_key(user_id)

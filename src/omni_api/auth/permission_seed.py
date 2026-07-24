@@ -448,6 +448,7 @@ API_ROUTE_SEEDS: tuple[tuple[str, str, str], ...] = (
     ("system.scheduled_job.list", "GET", "/api/v1/scheduled-jobs"),
     ("system.scheduled_job.read", "GET", "/api/v1/scheduled-jobs/*"),
     ("system.scheduled_job.update", "PUT", "/api/v1/scheduled-jobs/*"),
+    ("system.scheduled_job.trigger", "GET", "/api/v1/scheduled-jobs/tenant-options"),
     ("system.scheduled_job.trigger", "POST", "/api/v1/scheduled-jobs/*/trigger"),
     ("system.scheduled_job.control", "POST", "/api/v1/scheduled-jobs/*/start"),
     ("system.scheduled_job.control", "POST", "/api/v1/scheduled-jobs/*/stop"),

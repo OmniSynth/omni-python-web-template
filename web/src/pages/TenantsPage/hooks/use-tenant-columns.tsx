@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 import { createActionsColumn } from "@/components/table/table-row-actions";
+import { useTimezone } from "@/contexts/TimezoneContext";
 import type { TenantRecord } from "@/types/auth";
 import type { TableColumnDef } from "@/types/table-preference";
 import { formatTenantAdmin, formatTenantLocation } from "../utils";
 
 export function useTenantColumns(openEdit: (tenant: TenantRecord) => void) {
+  const { formatDateTime } = useTimezone();
   return useMemo<TableColumnDef<TenantRecord>[]>(
     () => [
       {
@@ -41,6 +43,12 @@ export function useTenantColumns(openEdit: (tenant: TenantRecord) => void) {
         sortKey: "enabled",
         render: (t) => (t.enabled ? "启用" : "禁用"),
       },
+      {
+        id: "expires_at",
+        label: "套餐到期",
+        defaultWidth: 160,
+        render: (t) => (t.expires_at ? formatDateTime(t.expires_at) : "永不过期"),
+      },
       createActionsColumn({
         defaultWidth: 80,
         actionDefs: [{ id: "edit", label: "编辑" }],
@@ -49,6 +57,6 @@ export function useTenantColumns(openEdit: (tenant: TenantRecord) => void) {
         ],
       }),
     ],
-    [openEdit],
+    [formatDateTime, openEdit],
   );
 }

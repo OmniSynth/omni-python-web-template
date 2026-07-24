@@ -56,7 +56,7 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/login` | 账号密码登录，返回 `session_token` |
+| POST | `/login` | 账号密码登录，返回 `session_token`；租户套餐已到期时 401，文案「租户套餐已到期，请联系管理员续费」 |
 | POST | `/register` | 公开注册：必填机构名称/类型/信用代码/手机号/省市区与区划码；系统生成管理员密码，开通机构与租户后返回 `session_token` 与一次性 `admin_credentials`（手机号为账号） |
 | POST | `/logout` | 删除 Redis 会话（需 Bearer） |
 | GET | `/me` | 当前用户、租户角色与权限（从 DB 重载并写回会话；需登录） |
@@ -76,10 +76,10 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/` | 租户列表 |
+| GET | `/` | 租户列表（含 `expires_at`） |
 | GET | `/admin-user-options` | 管理员候选用户（可选 `tenant_id` 查询参数） |
-| POST | `/` | 新建租户（可选 `admin_user_id` 绑定已有用户；否则自动创建管理员并返回一次性凭据） |
-| PUT | `/{id}` | 更新租户（可选 `admin_user_id` 更换管理员，原管理员降权为普通用户） |
+| POST | `/` | 新建租户（可选 `admin_user_id`；未传 `expires_at` 时默认 7 天后到期；否则自动创建管理员并返回一次性凭据） |
+| PUT | `/{id}` | 更新租户（可选 `admin_user_id`、`expires_at`；传 `expires_at: null` 表示永不过期） |
 | GET | `/{id}/system-roles` | 查询绑定的预置系统角色 |
 | PUT | `/{id}/system-roles` | 更新绑定并同步 admin 权限 |
 
@@ -210,14 +210,19 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 
 | 方法 | 路径 | 权限码 | 说明 |
 |---|---|---|---|
-| GET | `/` | `system.scheduled_job.list` | 任务列表（含调度状态、上次/下次执行） |
+| GET | `/` | `system.scheduled_job.list` | 任务列表（含调度状态、`requires_tenant`、上次/下次执行） |
+| GET | `/tenant-options` | `system.scheduled_job.trigger` | 执行前租户选择（`q` 匹配租户名/手机号/机构名/统一社会信用代码；分页） |
 | GET | `/{code}` | `system.scheduled_job.read` | 任务详情 |
-| PUT | `/{code}` | `system.scheduled_job.update` | 更新 cron 表达式或启用状态 |
-| POST | `/{code}/trigger` | `system.scheduled_job.trigger` | 立即触发（202，后台执行） |
+| PUT | `/{code}` | `system.scheduled_job.update` | 更新 cron（5 段或 6 段秒级）或启用状态 |
+| POST | `/{code}/trigger` | `system.scheduled_job.trigger` | 立即触发（body 可选 `{ tenant_id }`；`requires_tenant=true` 时必填；202） |
 | POST | `/{code}/start` | `system.scheduled_job.control` | 启动调度 |
 | POST | `/{code}/stop` | `system.scheduled_job.control` | 停止调度 |
 
-内置任务由 `services/scheduled_job_registry.py` 注册；配置持久化于 `t_sys_scheduled_job`（当前无内置任务）。
+内置任务由 `services/scheduled_job_registry.py` 注册，配置持久化于 `t_sys_scheduled_job`。
+
+- cron：支持标准 5 段（分 时 日 月 周）与 6 段（秒 分 时 日 月 周）。
+- 内置 `tenant_expiry_check`（租户套餐到期检查）：默认 `*/5 * * * * *`，`requires_tenant=false`；扫描已到期租户并踢下线对应会话。
+- 租户级任务手动触发时在右侧抽屉选择目标租户；平台级任务直接执行。
 
 ### 通用
 

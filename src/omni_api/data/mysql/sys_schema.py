@@ -7,6 +7,7 @@ import asyncio
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from omni_api.data.mysql.ddl_exec import execute_create_table_if_missing
+from omni_api.data.mysql.sys_schema_migrate import ensure_sys_schema_migrations
 from omni_api.data.mysql.sys_sql import all_sys_ddl_statements
 
 _sys_schema_ready = False
@@ -30,4 +31,5 @@ async def ensure_sys_schema(engine: AsyncEngine) -> None:
         async with engine.begin() as conn:
             for stmt in all_sys_ddl_statements():
                 await execute_create_table_if_missing(conn, stmt)
+            await ensure_sys_schema_migrations(conn)
         _sys_schema_ready = True

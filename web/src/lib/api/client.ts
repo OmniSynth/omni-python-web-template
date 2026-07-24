@@ -1,5 +1,7 @@
+import { showBlockingError } from "@/lib/form-feedback";
 import { handleSessionExpired } from "@/lib/session-expired";
 import { authHeaders } from "@/lib/session-token";
+import { isTenantExpiredMessage } from "@/lib/tenant-expiry";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -25,6 +27,9 @@ export async function json<T>(url: string, options: RequestInit = {}): Promise<T
     const msg = (data as { detail?: string }).detail || r.statusText;
     const text = typeof msg === "string" ? msg : JSON.stringify(msg);
     if (r.status === 401 && text !== "请先选择租户") {
+      if (isTenantExpiredMessage(text)) {
+        showBlockingError("套餐已到期", text);
+      }
       void handleSessionExpired();
     }
     throw new ApiError(text, r.status);

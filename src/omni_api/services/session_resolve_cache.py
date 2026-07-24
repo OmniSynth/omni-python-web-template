@@ -8,7 +8,13 @@ from typing import Any
 from starlette.requests import Request
 
 _request_ctx: ContextVar[Request | None] = ContextVar("http_request", default=None)
-_MISSING = object()
+
+
+class _MissingType:
+    """缓存未命中哨兵，便于与 dict / None 做类型收窄。"""
+
+
+_MISSING = _MissingType()
 
 
 def bind_request(request: Request) -> Token:
@@ -35,7 +41,7 @@ def _cache_bucket() -> dict[str, dict[str, Any] | None] | None:
     return cache
 
 
-def get_cached_session(token: str) -> dict[str, Any] | None | object:
+def get_cached_session(token: str) -> dict[str, Any] | None | _MissingType:
     cache = _cache_bucket()
     if cache is None:
         return _MISSING
@@ -61,7 +67,7 @@ def _tenant_active_bucket() -> dict[str, bool] | None:
     return cache
 
 
-def get_cached_tenant_active(user_id: int, tenant_id: int) -> bool | object:
+def get_cached_tenant_active(user_id: int, tenant_id: int) -> bool | _MissingType:
     cache = _tenant_active_bucket()
     if cache is None:
         return _MISSING

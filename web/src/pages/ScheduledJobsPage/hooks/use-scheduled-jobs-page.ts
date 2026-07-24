@@ -16,6 +16,10 @@ export function useScheduledJobsPage() {
   const [sectionError, setSectionError] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionCode, setActionCode] = useState<string | null>(null);
+  const [executeOpen, setExecuteOpen] = useState(false);
+  const [triggering, setTriggering] = useState<ScheduledJobRecord | null>(null);
+  const [executeError, setExecuteError] = useState("");
+  const [executeSubmitting, setExecuteSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -42,17 +46,22 @@ export function useScheduledJobsPage() {
     load,
     editing,
     cronExpr,
+    triggering,
     setActionCode,
     setSectionError,
     setSaving,
     setSheetOpen,
     setEditing,
+    setExecuteOpen,
+    setTriggering,
+    setExecuteError,
+    setExecuteSubmitting,
   });
 
   const columns = useScheduledJobColumns({
     formatDateTime,
     onEdit: openEdit,
-    onTrigger: actions.handleTrigger,
+    onTrigger: actions.openExecute,
     onStart: actions.handleStart,
     onStop: actions.handleStop,
     actionCode,
@@ -78,6 +87,13 @@ export function useScheduledJobsPage() {
     sectionError,
     saving,
     handleSave: actions.handleSave,
+    executeOpen,
+    setExecuteOpen,
+    triggering,
+    setTriggering,
+    executeError,
+    executeSubmitting,
+    handleConfirmExecute: actions.handleConfirmExecute,
     load,
   };
 }

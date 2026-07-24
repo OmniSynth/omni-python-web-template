@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useFieldErrors } from "@/hooks/useFieldErrors";
 import { errorMessage, showToastError } from "@/lib/form-feedback";
 import { resolveDefaultHomePath } from "@/lib/nav-menu-data";
+import { isTenantExpiredMessage } from "@/lib/tenant-expiry";
 import { useAuthStore } from "@/stores/auth-store";
 import { LoginFormPanel } from "./components/login-form-panel";
 import { LoginHeroPanel } from "./components/login-hero-panel";
@@ -58,7 +59,11 @@ export function LoginPage() {
       const home = resolveDefaultHomePath(navTree, (code) => new Set(authedUser?.permissions ?? []).has(code)) ?? "/";
       navigate(savedFrom ?? home, { replace: true });
     } catch (err) {
-      showToastError(errorMessage(err, "登录失败"));
+      const message = errorMessage(err, "登录失败");
+      // 套餐到期由 api client 统一弹阻断窗，避免重复 toast
+      if (!isTenantExpiredMessage(message)) {
+        showToastError(message);
+      }
     } finally {
       setSubmitting(false);
     }

@@ -6,6 +6,7 @@ import { TableHeaderActions } from "@/components/table/table-header-actions";
 import { mobileClientInfiniteScroll, mobileTableProps } from "@/components/table/table-mobile-props";
 import type { ScheduledJobRecord } from "@/types/scheduled-job";
 import { ScheduledJobEditSheet } from "./components/scheduled-job-edit-sheet";
+import { ScheduledJobExecuteSheet } from "./components/scheduled-job-execute-sheet";
 import { useScheduledJobsPage } from "./hooks/use-scheduled-jobs-page";
 
 const MOBILE_TABLE = mobileTableProps<ScheduledJobRecord>({
@@ -69,6 +70,20 @@ export function ScheduledJobsPage() {
         sectionError={page.sectionError}
         saving={page.saving}
         onSave={() => void page.handleSave()}
+      />
+
+      <ScheduledJobExecuteSheet
+        open={page.executeOpen}
+        onOpenChange={(open) => {
+          page.setExecuteOpen(open);
+          if (!open) {
+            page.setTriggering(null);
+          }
+        }}
+        job={page.triggering}
+        submitting={page.executeSubmitting}
+        sectionError={page.executeError}
+        onConfirm={(tenantId) => void page.handleConfirmExecute(tenantId)}
       />
 
       <TableColumnSettingsSheet

@@ -7,7 +7,6 @@ from typing import Any
 
 from datetime import datetime
 
-from croniter import croniter
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -19,9 +18,12 @@ from omni_api.schemas.scheduled_job import (
     ScheduledJobRecord,
     ScheduledJobRunStatus,
     ScheduledJobUpdate,
-    validate_cron_expr,
+    croniter_from_expr,
 )
-from omni_api.services.scheduled_job_registry import SCHEDULED_JOB_DEFINITIONS
+from omni_api.services.scheduled_job_registry import (
+    SCHEDULED_JOB_DEFINITIONS,
+    get_job_definition,
+)
 
 _SORT_FIELDS = {
     "id": "id",
@@ -42,18 +44,21 @@ _SELECT = (
 
 def _compute_next_run_at(cron_expr: str, base: datetime | None = None) -> datetime:
     start = base or utc_now()
-    return croniter(validate_cron_expr(cron_expr), start).get_next(datetime)
+    return croniter_from_expr(cron_expr, start).get_next(datetime)
 
 
 def _row_to_record(row: Sequence[Any], *, active: bool = False) -> ScheduledJobRecord:
+    code = str(row[1])
+    definition = get_job_definition(code)
     return ScheduledJobRecord(
         id=int(row[0]),
-        code=str(row[1]),
+        code=code,
         name=str(row[2]),
         description=str(row[3]),
         cron_expr=str(row[4]),
         enabled=bool(row[5]),
         active=active,
+        requires_tenant=True if definition is None else definition.requires_tenant,
         last_run_at=row[6],
         last_run_status=row[7],  # type: ignore[arg-type]
         last_run_message=str(row[8] or ""),

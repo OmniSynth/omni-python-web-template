@@ -28,9 +28,13 @@ async def get_session_data(
     token = _extract_token(credentials)
     if not token:
         raise HTTPException(status_code=401, detail="未登录")
-    session = await SessionService().resolve(token)
+    svc = SessionService()
+    session = await svc.resolve(token)
     if session is None:
-        raise HTTPException(status_code=401, detail="登录已失效，请重新登录")
+        reason = svc.take_session_kick_reason(token)
+        raise HTTPException(
+            status_code=401, detail=reason or "登录已失效，请重新登录"
+        )
     return session
 
 

@@ -154,6 +154,8 @@ export interface TenantRecord {
   admin_username: string | null;
   admin_display_name: string | null;
   enabled: boolean;
+  /** 套餐到期时间（UTC ISO）；null 表示永不过期 */
+  expires_at: string | null;
 }
 
 export interface TenantAdminUserOption {

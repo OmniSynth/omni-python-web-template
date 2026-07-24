@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from omni_api.data.mysql.actor import get_actor_id
 from omni_api.data.mysql.biz_table import (
+    SYS_ORGANIZATION,
+    SYS_ORG_TENANT,
     SYS_TENANT,
     SYS_USER,
     SYS_USER_TENANT,
@@ -21,9 +23,11 @@ from omni_api.schemas.tenant import (
     BoundTenantInfo,
     MEMBERSHIP_ACTIVE,
     MEMBERSHIP_DEPARTED,
+    PaginatedTenantOptions,
     RoleDataScopeItem,
     TenantAdminUserOption,
     TenantCreate,
+    TenantOptionRecord,
     TenantRecord,
     TenantUpdate,
     UserTenantBinding,
@@ -46,7 +50,8 @@ _TENANT_SORT_FIELDS = {
 
 _TENANT_SELECT = (
     f"SELECT t.id, t.code, t.name, t.province, t.city, t.district, t.region, t.phone, "
-    f"t.admin_user_id, u.username, u.display_name, t.enabled, t.created_at, t.updated_at "
+    f"t.admin_user_id, u.username, u.display_name, t.enabled, t.expires_at, "
+    f"t.created_at, t.updated_at "
     f"FROM {SYS_TENANT} t "
     f"LEFT JOIN {SYS_USER} u ON u.id = t.admin_user_id"
 )
@@ -66,8 +71,9 @@ def _row_to_tenant(row: Sequence[Any]) -> TenantRecord:
         admin_username=str(row[9]) if row[9] is not None else None,
         admin_display_name=str(row[10]) if row[10] is not None else None,
         enabled=bool(row[11]),
-        created_at=row[12],
-        updated_at=row[13],
+        expires_at=row[12],
+        created_at=row[13],
+        updated_at=row[14],
     )
 
 
@@ -96,11 +102,108 @@ class TenantRepo:
             rows = (await conn.execute(sql)).fetchall()
         return [_row_to_tenant(r) for r in rows]
 
+    async def search_options(
+        self,
+        *,
+        q: str = "",
+        page: int = 1,
+        page_size: int = 20,
+    ) -> PaginatedTenantOptions:
+        """按租户名/手机号/关联机构名或统一社会信用代码模糊查询。"""
+        keyword = q.strip()
+        where = ""
+        params: dict[str, Any] = {
+            "limit": page_size,
+            "offset": (page - 1) * page_size,
+        }
+        if keyword:
+            where = (
+                " WHERE ("
+                "t.name LIKE :kw OR t.phone LIKE :kw OR "
+                "EXISTS ("
+                f"SELECT 1 FROM {SYS_ORG_TENANT} ot "
+                f"JOIN {SYS_ORGANIZATION} o ON o.id = ot.org_id "
+                "WHERE ot.tenant_id = t.id AND (o.name LIKE :kw OR o.credit_code LIKE :kw)"
+                "))"
+            )
+            params["kw"] = f"%{keyword}%"
+
+        primary_org = (
+            f"(SELECT o.name FROM {SYS_ORG_TENANT} ot "
+            f"JOIN {SYS_ORGANIZATION} o ON o.id = ot.org_id "
+            "WHERE ot.tenant_id = t.id ORDER BY o.id LIMIT 1)"
+        )
+        primary_credit = (
+            f"(SELECT o.credit_code FROM {SYS_ORG_TENANT} ot "
+            f"JOIN {SYS_ORGANIZATION} o ON o.id = ot.org_id "
+            "WHERE ot.tenant_id = t.id ORDER BY o.id LIMIT 1)"
+        )
+        count_sql = text(f"SELECT COUNT(*) FROM {SYS_TENANT} t{where}")
+        list_sql = text(
+            f"SELECT t.id, t.code, t.name, t.phone, t.enabled, "
+            f"{primary_org} AS org_name, {primary_credit} AS org_credit_code "
+            f"FROM {SYS_TENANT} t{where} ORDER BY t.id LIMIT :limit OFFSET :offset"
+        )
+        async with self._engine.connect() as conn:
+            total = int((await conn.execute(count_sql, params)).scalar_one())
+            rows = (await conn.execute(list_sql, params)).fetchall()
+        items = [
+            TenantOptionRecord(
+                id=int(row[0]),
+                code=str(row[1]),
+                name=str(row[2]),
+                phone=str(row[3] or ""),
+                enabled=bool(row[4]),
+                org_name=str(row[5] or ""),
+                org_credit_code=str(row[6] or ""),
+            )
+            for row in rows
+        ]
+        return PaginatedTenantOptions(items=items, total=total, page=page, page_size=page_size)
+
     async def get_by_id(self, tenant_id: int) -> TenantRecord | None:
         sql = text(f"{_TENANT_SELECT} WHERE t.id=:id")
         async with self._engine.connect() as conn:
             row = (await conn.execute(sql, {"id": tenant_id})).fetchone()
         return _row_to_tenant(row) if row else None
+
+    async def is_tenant_expired(self, tenant_id: int) -> bool:
+        from omni_api.services.tenant_expiry import is_expired_at
+
+        tenant = await self.get_by_id(tenant_id)
+        if tenant is None:
+            return True
+        return is_expired_at(tenant.expires_at)
+
+    async def list_expired_tenant_ids(self, *, tenant_id: int | None = None) -> list[int]:
+        """启用且已过期的租户 ID；可限定单个租户。"""
+        from omni_api.data.mysql.utc import utc_now
+
+        clauses = ["enabled = 1", "expires_at IS NOT NULL", "expires_at <= :now"]
+        params: dict[str, Any] = {"now": utc_now()}
+        if tenant_id is not None:
+            clauses.append("id = :tid")
+            params["tid"] = tenant_id
+        sql = text(
+            f"SELECT id FROM {SYS_TENANT} WHERE {' AND '.join(clauses)} ORDER BY id"
+        )
+        async with self._engine.connect() as conn:
+            rows = (await conn.execute(sql, params)).fetchall()
+        return [int(row[0]) for row in rows]
+
+    async def list_user_ids_for_tenants(self, tenant_ids: list[int]) -> list[int]:
+        """曾绑定过这些租户的用户 ID（用于扫描在线会话）。"""
+        if not tenant_ids:
+            return []
+        placeholders = ", ".join(f":t{i}" for i in range(len(tenant_ids)))
+        params = {f"t{i}": tid for i, tid in enumerate(tenant_ids)}
+        sql = text(
+            f"SELECT DISTINCT user_id FROM {SYS_USER_TENANT} "
+            f"WHERE tenant_id IN ({placeholders})"
+        )
+        async with self._engine.connect() as conn:
+            rows = (await conn.execute(sql, params)).fetchall()
+        return [int(row[0]) for row in rows]
 
     async def get_by_code(self, code: str) -> TenantRecord | None:
         sql = text(f"{_TENANT_SELECT} WHERE t.code=:code")
@@ -154,20 +257,23 @@ class TenantRepo:
         ]
 
     async def create(self, body: TenantCreate) -> TenantRecord:
+        from omni_api.services.tenant_expiry import default_tenant_expires_at
+
         org = await OrgRepo(self._engine).get_by_id(body.org_id)
         if org is None:
             raise ValueError("机构不存在")
         region = normalize_region(body.region)
         phone = normalize_phone(body.phone)
+        expires_at = body.expires_at if body.expires_at is not None else default_tenant_expires_at()
         actor = get_actor_id()
         async with self._engine.begin() as conn:
             code = await allocate_tenant_code(conn, org.org_type, region)
             result = await conn.execute(
                 text(
                     f"INSERT INTO {SYS_TENANT} "
-                    f"(code, name, province, city, district, region, phone, enabled, "
+                    f"(code, name, province, city, district, region, phone, enabled, expires_at, "
                     f"created_by, updated_by) "
-                    f"VALUES (:code, :name, :prov, :city, :dist, :region, :phone, :en, :cb, :ub)"
+                    f"VALUES (:code, :name, :prov, :city, :dist, :region, :phone, :en, :exp, :cb, :ub)"
                 ),
                 {
                     "code": code,
@@ -178,6 +284,7 @@ class TenantRepo:
                     "region": region,
                     "phone": phone,
                     "en": int(body.enabled),
+                    "exp": expires_at,
                     "cb": actor,
                     "ub": actor,
                 },
@@ -211,11 +318,14 @@ class TenantRepo:
         phone = current.phone
         if body.phone is not None:
             phone = normalize_phone(body.phone.strip())
+        expires_at = current.expires_at
+        if "expires_at" in body.model_fields_set:
+            expires_at = body.expires_at
         actor = get_actor_id()
         sql = text(
             f"UPDATE {SYS_TENANT} SET name=:name, province=:prov, city=:city, "
-            f"district=:dist, region=:region, phone=:phone, enabled=:en, updated_by=:ub "
-            f"WHERE id=:id"
+            f"district=:dist, region=:region, phone=:phone, enabled=:en, expires_at=:exp, "
+            f"updated_by=:ub WHERE id=:id"
         )
         async with self._engine.begin() as conn:
             await conn.execute(
@@ -229,6 +339,7 @@ class TenantRepo:
                     "region": region,
                     "phone": phone,
                     "en": int(enabled),
+                    "exp": expires_at,
                     "ub": actor,
                 },
             )
@@ -399,9 +510,11 @@ class TenantRepo:
         orgs = await OrgRepo(self._engine).list_primary_orgs_by_tenant()
         result: list[BoundTenantInfo] = []
         dept_repo = DeptRepo(self._engine)
+        from omni_api.services.tenant_expiry import is_expired_at
+
         for b in bindings:
             tenant = await self.get_by_id(b.tenant_id)
-            if tenant is None or not tenant.enabled:
+            if tenant is None or not tenant.enabled or is_expired_at(tenant.expires_at):
                 continue
             dept_name: str | None = None
             if b.dept_id is not None:

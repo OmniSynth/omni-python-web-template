@@ -6,12 +6,15 @@ import asyncio
 import logging
 from datetime import datetime
 
-from croniter import croniter
-
 from omni_api.data.mysql.connection import mysql_engine
 from omni_api.data.mysql.scheduled_job_repo import ScheduledJobRepo
+from omni_api.data.mysql.tenant_repo import TenantRepo
 from omni_api.data.mysql.utc import utc_now
-from omni_api.schemas.scheduled_job import ScheduledJobRecord, ScheduledJobUpdate
+from omni_api.schemas.scheduled_job import (
+    ScheduledJobRecord,
+    ScheduledJobUpdate,
+    croniter_from_expr,
+)
 from omni_api.services.scheduled_job_registry import get_job_definition
 
 logger = logging.getLogger(__name__)
@@ -91,13 +94,33 @@ class ScheduledJobManager:
     async def stop_job(self, code: str) -> ScheduledJobRecord | None:
         return await self.update_job(code, ScheduledJobUpdate(enabled=False))
 
-    async def trigger_job(self, code: str) -> None:
-        if get_job_definition(code) is None:
+    async def trigger_job(self, code: str, *, tenant_id: int | None = None) -> None:
+        definition = get_job_definition(code)
+        if definition is None:
             raise ValueError(f"未知任务: {code}")
+        run_tenant_id: int | None = tenant_id
+        if definition.requires_tenant:
+            if run_tenant_id is None:
+                raise ValueError("请选择执行租户")
+            tenant = await TenantRepo(mysql_engine()).get_by_id(run_tenant_id)
+            if tenant is None:
+                raise ValueError("租户不存在")
+            if not tenant.enabled:
+                raise ValueError("租户已禁用，无法执行")
+        else:
+            run_tenant_id = tenant_id
         lock = self._execute_locks.setdefault(code, asyncio.Lock())
         if lock.locked():
             raise RuntimeError(f"任务 {code} 正在执行中，请稍后再试")
-        task = asyncio.create_task(self._execute_job(code, manual=True), name=f"manual-{code}")
+        task_name = (
+            f"manual-{code}-tenant-{run_tenant_id}"
+            if run_tenant_id is not None
+            else f"manual-{code}"
+        )
+        task = asyncio.create_task(
+            self._execute_job(code, manual=True, tenant_id=run_tenant_id),
+            name=task_name,
+        )
         self._manual_tasks.add(task)
         task.add_done_callback(self._manual_tasks.discard)
 
@@ -141,7 +164,7 @@ class ScheduledJobManager:
     async def _loop(self, code: str, cron_expr: str, stop_event: asyncio.Event) -> None:
         while not stop_event.is_set():
             now = utc_now()
-            next_at = croniter(cron_expr, now).get_next(datetime)
+            next_at = croniter_from_expr(cron_expr, now).get_next(datetime)
             wait_sec = max((next_at - now).total_seconds(), 0.0)
             try:
                 await asyncio.wait_for(stop_event.wait(), timeout=wait_sec)
@@ -150,9 +173,9 @@ class ScheduledJobManager:
                 pass
             if stop_event.is_set():
                 break
-            await self._execute_job(code, manual=False)
+            await self._execute_job(code, manual=False, tenant_id=None)
 
-    async def _execute_job(self, code: str, *, manual: bool) -> None:
+    async def _execute_job(self, code: str, *, manual: bool, tenant_id: int | None) -> None:
         definition = get_job_definition(code)
         if definition is None:
             return
@@ -171,7 +194,7 @@ class ScheduledJobManager:
             cron_expr = job.cron_expr
             await repo.mark_running(code)
             try:
-                detail = await definition.handler(manual)
+                detail = await definition.handler(manual, tenant_id)
                 message = detail if detail else ("手动触发成功" if manual else "执行成功")
                 await repo.record_run_result(
                     code,

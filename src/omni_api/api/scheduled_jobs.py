@@ -5,9 +5,12 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from omni_api.api.deps import require_permission
+from omni_api.data.mysql.connection import mysql_engine
+from omni_api.data.mysql.tenant_repo import TenantRepo
 from omni_api.schemas.auth import UserRecord
 from omni_api.schemas.list_query import SortOrder
-from omni_api.schemas.scheduled_job import ScheduledJobRecord, ScheduledJobUpdate
+from omni_api.schemas.scheduled_job import ScheduledJobRecord, ScheduledJobTrigger, ScheduledJobUpdate
+from omni_api.schemas.tenant import PaginatedTenantOptions
 from omni_api.services.scheduled_job_manager import ScheduledJobManager
 
 router = APIRouter(prefix="/api/v1/scheduled-jobs", tags=["scheduled-jobs"])
@@ -25,6 +28,16 @@ async def list_scheduled_jobs(
     reverse = sort_order == "desc"
     key = sort_by
     return sorted(jobs, key=lambda item: getattr(item, key, ""), reverse=reverse)
+
+
+@router.get("/tenant-options", response_model=PaginatedTenantOptions)
+async def list_scheduled_job_tenant_options(
+    q: str = Query(default="", max_length=64, description="租户名/手机号/机构名/统一社会信用代码"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    _: UserRecord = Depends(require_permission("system.scheduled_job.trigger")),
+) -> PaginatedTenantOptions:
+    return await TenantRepo(mysql_engine()).search_options(q=q, page=page, page_size=page_size)
 
 
 @router.get("/{code}", response_model=ScheduledJobRecord)
@@ -56,12 +69,15 @@ async def update_scheduled_job(
 @router.post("/{code}/trigger", status_code=202)
 async def trigger_scheduled_job(
     code: str,
+    body: ScheduledJobTrigger = ScheduledJobTrigger(),
     _: UserRecord = Depends(require_permission("system.scheduled_job.trigger")),
 ) -> dict[str, str]:
     try:
-        await ScheduledJobManager.get().trigger_job(code)
+        await ScheduledJobManager.get().trigger_job(code, tenant_id=body.tenant_id)
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        detail = str(exc)
+        status = 404 if "不存在" in detail or "未知任务" in detail else 400
+        raise HTTPException(status_code=status, detail=detail) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     message = "同步任务已开始执行，请稍后刷新查看结果"

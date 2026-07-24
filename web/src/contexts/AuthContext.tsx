@@ -1,4 +1,5 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo } from "react";
+import { api } from "@/lib/api";
 import { DEFAULT_DOCUMENT_TITLE } from "@/lib/document-title";
 import { resolveDefaultHomePath } from "@/lib/nav-menu-data";
 import {
@@ -8,6 +9,9 @@ import {
 } from "@/lib/tenant-display";
 import { type LoginResult, type RegisterResult, useAuthStore } from "@/stores/auth-store";
 import type { AuthUser, BoundTenantInfo, PermissionInfo } from "@/types/auth";
+
+/** 与后端租户到期巡检节奏对齐，及时弹出套餐到期提示 */
+const SESSION_PROBE_INTERVAL_MS = 5000;
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -70,6 +74,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const name = currentTenant?.name?.trim();
     document.title = name || DEFAULT_DOCUMENT_TITLE;
   }, [currentTenant]);
+
+  useEffect(() => {
+    if (!user) return;
+    const timer = window.setInterval(() => {
+      void api.auth.me().catch(() => undefined);
+    }, SESSION_PROBE_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [user]);
 
   const hasPermission = useCallback((code: string) => new Set(user?.permissions ?? []).has(code), [user]);
 
