@@ -1,4 +1,4 @@
-/** 棱镜 WebGL 自适应画质：缓解 Windows 核显掉帧。 */
+/** 棱镜 WebGL 自适应画质：缓解 Windows 核显掉帧；独显可走高档。 */
 
 export type PrismQuality = {
   /** 设备像素比上限 */
@@ -13,6 +13,30 @@ export type PrismQuality = {
   perfTier: "high" | "balanced" | "low";
 };
 
+const QUALITY_LOW: PrismQuality = {
+  dprCap: 1,
+  renderScale: 0.5,
+  stepCount: 40,
+  maxFps: 30,
+  perfTier: "low",
+};
+
+const QUALITY_BALANCED: PrismQuality = {
+  dprCap: 1.25,
+  renderScale: 0.75,
+  stepCount: 64,
+  maxFps: 45,
+  perfTier: "balanced",
+};
+
+const QUALITY_HIGH: PrismQuality = {
+  dprCap: 1.5,
+  renderScale: 0.9,
+  stepCount: 80,
+  maxFps: 60,
+  perfTier: "high",
+};
+
 function isWindowsPlatform(): boolean {
   const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
   const platform = nav.userAgentData?.platform ?? navigator.platform ?? "";
@@ -20,38 +44,51 @@ function isWindowsPlatform(): boolean {
   return /Windows/i.test(navigator.userAgent);
 }
 
+/** 读取 WebGL 未屏蔽渲染器字符串（失败返回空）。 */
+function probeGpuRenderer(): string {
+  try {
+    const canvas = document.createElement("canvas");
+    const gl = canvas.getContext("webgl") ?? canvas.getContext("experimental-webgl");
+    if (!(gl instanceof WebGLRenderingContext)) return "";
+    const ext = gl.getExtension("WEBGL_debug_renderer_info");
+    if (!ext) return "";
+    return String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) ?? "");
+  } catch {
+    return "";
+  }
+}
+
+/** 根据渲染器名判断是否更像独立显卡。 */
+export function isLikelyDiscreteGpu(renderer: string): boolean {
+  const r = renderer.toLowerCase();
+  if (!r || /swiftshader|llvmpipe|softpipe|software|microsoft basic/i.test(r)) {
+    return false;
+  }
+  if (/nvidia|geforce|rtx|gtx|quadro|tesla/i.test(r)) return true;
+  if (/radeon\s+rx|radeon\s+pro|radeon\s+r[579]|radeon\s+hd\s+[5-9]/i.test(r)) return true;
+  if (/arc\s+a\d{2,}/i.test(r)) return true;
+  return false;
+}
+
 /** 按平台与硬件给出棱镜画质档位。 */
 export function resolvePrismQuality(): PrismQuality {
   const cores = navigator.hardwareConcurrency || 4;
   const saveData = Boolean((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData);
-  const windows = isWindowsPlatform();
-  const lowEnd = saveData || cores <= 4;
+  if (saveData) return { ...QUALITY_LOW, renderScale: 0.5 };
 
-  if (windows || lowEnd) {
-    return {
-      dprCap: 1,
-      renderScale: windows ? 0.5 : 0.6,
-      stepCount: windows ? 40 : 48,
-      maxFps: 30,
-      perfTier: "low",
-    };
+  const windows = isWindowsPlatform();
+  const discrete = isLikelyDiscreteGpu(probeGpuRenderer());
+
+  // Windows 核显：强制低档；独显则与其它平台一样按核数分档
+  if (windows && !discrete) {
+    return { ...QUALITY_LOW, renderScale: 0.5, stepCount: 40 };
   }
-  if (cores <= 8) {
-    return {
-      dprCap: 1.25,
-      renderScale: 0.75,
-      stepCount: 64,
-      maxFps: 45,
-      perfTier: "balanced",
-    };
+
+  if (cores <= 4 && !discrete) {
+    return { ...QUALITY_LOW, renderScale: 0.6, stepCount: 48 };
   }
-  return {
-    dprCap: 1.5,
-    renderScale: 0.9,
-    stepCount: 80,
-    maxFps: 60,
-    perfTier: "high",
-  };
+  if (cores <= 8) return QUALITY_BALANCED;
+  return QUALITY_HIGH;
 }
 
 export function applyPrismPerfTier(tier: PrismQuality["perfTier"]): () => void {
