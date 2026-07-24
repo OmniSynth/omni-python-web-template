@@ -1,4 +1,4 @@
-/** 棱镜 WebGL 自适应画质：静态探测 + 运行时降级档位。 */
+/** 棱镜 WebGL 自适应画质：缓解 Windows 核显掉帧；独显可走高档。 */
 
 export type PrismQuality = {
   /** 设备像素比上限 */
@@ -13,18 +13,7 @@ export type PrismQuality = {
   perfTier: "high" | "balanced" | "low";
 };
 
-/** 运行时降级结果：继续动 / 定格最后一帧 / 卸掉 WebGL 改 CSS。 */
-export type PrismRuntimeMode = "animate" | "static" | "css";
-
-export const QUALITY_ULTRA_LOW: PrismQuality = {
-  dprCap: 1,
-  renderScale: 0.32,
-  stepCount: 22,
-  maxFps: 16,
-  perfTier: "low",
-};
-
-export const QUALITY_LOW: PrismQuality = {
+const QUALITY_LOW: PrismQuality = {
   dprCap: 1,
   renderScale: 0.5,
   stepCount: 40,
@@ -32,7 +21,7 @@ export const QUALITY_LOW: PrismQuality = {
   perfTier: "low",
 };
 
-export const QUALITY_BALANCED: PrismQuality = {
+const QUALITY_BALANCED: PrismQuality = {
   dprCap: 1.25,
   renderScale: 0.75,
   stepCount: 64,
@@ -40,7 +29,7 @@ export const QUALITY_BALANCED: PrismQuality = {
   perfTier: "balanced",
 };
 
-export const QUALITY_HIGH: PrismQuality = {
+const QUALITY_HIGH: PrismQuality = {
   dprCap: 1.5,
   renderScale: 0.9,
   stepCount: 80,
@@ -48,18 +37,11 @@ export const QUALITY_HIGH: PrismQuality = {
   perfTier: "high",
 };
 
-const CSS_FALLBACK_SESSION_KEY = "omni-prism-css-fallback";
-
 function isWindowsPlatform(): boolean {
   const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
   const platform = nav.userAgentData?.platform ?? navigator.platform ?? "";
   if (/Win/i.test(platform)) return true;
   return /Windows/i.test(navigator.userAgent);
-}
-
-function deviceMemoryGb(): number | null {
-  const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
-  return typeof mem === "number" && mem > 0 ? mem : null;
 }
 
 /** 读取 WebGL 未屏蔽渲染器字符串（失败返回空）。 */
@@ -88,63 +70,25 @@ export function isLikelyDiscreteGpu(renderer: string): boolean {
   return false;
 }
 
-/** 本会话是否已判定应跳过 WebGL（多标签卡顿后记住）。 */
-export function shouldSkipPrismWebGl(): boolean {
-  try {
-    return sessionStorage.getItem(CSS_FALLBACK_SESSION_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-export function rememberPrismCssFallback(): void {
-  try {
-    sessionStorage.setItem(CSS_FALLBACK_SESSION_KEY, "1");
-  } catch {
-    /* 隐私模式等忽略 */
-  }
-}
-
 /** 按平台与硬件给出棱镜画质档位。 */
 export function resolvePrismQuality(): PrismQuality {
   const cores = navigator.hardwareConcurrency || 4;
   const saveData = Boolean((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData);
-  const memoryGb = deviceMemoryGb();
-  if (saveData || (memoryGb !== null && memoryGb <= 2) || cores <= 2) {
-    return { ...QUALITY_ULTRA_LOW };
-  }
+  if (saveData) return { ...QUALITY_LOW, renderScale: 0.5 };
 
   const windows = isWindowsPlatform();
   const discrete = isLikelyDiscreteGpu(probeGpuRenderer());
 
+  // Windows 核显：强制低档；独显则与其它平台一样按核数分档
   if (windows && !discrete) {
-    return memoryGb !== null && memoryGb <= 4 ? { ...QUALITY_ULTRA_LOW } : { ...QUALITY_LOW };
+    return { ...QUALITY_LOW, renderScale: 0.5, stepCount: 40 };
   }
 
   if (cores <= 4 && !discrete) {
     return { ...QUALITY_LOW, renderScale: 0.6, stepCount: 48 };
   }
-  if (cores <= 8) return { ...QUALITY_BALANCED };
-  return { ...QUALITY_HIGH };
-}
-
-/**
- * 运行时降一级；已在最低动效档则返回 null（调用方应定格或改 CSS）。
- */
-export function downgradePrismQuality(current: PrismQuality): PrismQuality | null {
-  if (current.perfTier === "high") {
-    return { ...QUALITY_BALANCED };
-  }
-  if (current.perfTier === "balanced") {
-    return { ...QUALITY_LOW };
-  }
-  if (current.renderScale > QUALITY_ULTRA_LOW.renderScale + 0.02 || current.stepCount > QUALITY_ULTRA_LOW.stepCount) {
-    return { ...QUALITY_ULTRA_LOW };
-  }
-  if (current.maxFps > 10) {
-    return { ...QUALITY_ULTRA_LOW, maxFps: 10, renderScale: 0.25, stepCount: 16 };
-  }
-  return null;
+  if (cores <= 8) return QUALITY_BALANCED;
+  return QUALITY_HIGH;
 }
 
 export function applyPrismPerfTier(tier: PrismQuality["perfTier"]): () => void {
