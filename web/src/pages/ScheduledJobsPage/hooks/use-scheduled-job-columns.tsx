@@ -3,7 +3,7 @@ import { createActionsColumn } from "@/components/table/table-row-actions";
 import { Badge } from "@/components/ui/badge";
 import { describeCronExpr } from "@/lib/cron-builder";
 import type { ScheduledJobRecord } from "@/types/scheduled-job";
-import { SCHEDULED_JOB_STATUS_LABELS } from "@/types/scheduled-job";
+import { SCHEDULED_JOB_SCOPE_LABELS, SCHEDULED_JOB_STATUS_LABELS } from "@/types/scheduled-job";
 import type { TableColumnDef } from "@/types/table-preference";
 
 function formatDateTimeOrDash(formatDateTime: (value: string) => string, value: string | null) {
@@ -35,6 +35,17 @@ export function useScheduledJobColumns({
     () => [
       { id: "name", label: "任务名称", defaultWidth: 160, sortKey: "name", render: (job) => job.name },
       { id: "code", label: "任务编码", defaultWidth: 140, sortKey: "code", render: (job) => job.code },
+      {
+        id: "scope",
+        label: "范围",
+        defaultWidth: 80,
+        sortKey: "scope",
+        render: (job) => (
+          <Badge variant={job.scope === "system" ? "secondary" : "default"}>
+            {SCHEDULED_JOB_SCOPE_LABELS[job.scope] ?? job.scope}
+          </Badge>
+        ),
+      },
       {
         id: "description",
         label: "说明",

@@ -12,6 +12,7 @@ from omni_api.api.scheduled_jobs import router as scheduled_jobs_router
 from omni_api.api.table_preferences import router as table_preferences_router
 from omni_api.api.tenant_depts import router as tenant_depts_router
 from omni_api.api.tenant_roles import router as tenant_roles_router
+from omni_api.api.tenant_scheduled_jobs import router as tenant_scheduled_jobs_router
 from omni_api.api.tenant_users import router as tenant_users_router
 from omni_api.api.tenants import router as tenants_router
 from omni_api.api.user_profile import router as user_profile_router
@@ -30,6 +31,7 @@ __all__ = [
     "table_preferences_router",
     "tenant_depts_router",
     "tenant_roles_router",
+    "tenant_scheduled_jobs_router",
     "tenant_users_router",
     "tenants_router",
     "user_profile_router",

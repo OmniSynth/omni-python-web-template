@@ -15,9 +15,14 @@ type ScheduledJobExecuteSheetProps = {
   submitting: boolean;
   sectionError: string;
   onConfirm: (tenantId: number) => void;
+  title?: string;
+  confirmLabel?: string;
+  /** 停止模式：额外提供「停止全局调度」 */
+  onConfirmGlobal?: () => void;
+  globalConfirmLabel?: string;
 };
 
-/** 立即执行：右侧抽屉选择目标租户。 */
+/** 租户选择抽屉：立即执行或按租户停止。 */
 export function ScheduledJobExecuteSheet({
   open,
   onOpenChange,
@@ -25,6 +30,10 @@ export function ScheduledJobExecuteSheet({
   submitting,
   sectionError,
   onConfirm,
+  title = "执行定时任务",
+  confirmLabel = "确认执行",
+  onConfirmGlobal,
+  globalConfirmLabel = "停止全局调度",
 }: ScheduledJobExecuteSheetProps) {
   const [keyword, setKeyword] = useState("");
   const [debouncedKeyword, setDebouncedKeyword] = useState("");
@@ -79,7 +88,7 @@ export function ScheduledJobExecuteSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="p-0 sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>执行定时任务</SheetTitle>
+          <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
         <SheetBody className="space-y-4">
           {sectionError ? <FormSectionError>{sectionError}</FormSectionError> : null}
@@ -144,6 +153,11 @@ export function ScheduledJobExecuteSheet({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
+          {onConfirmGlobal ? (
+            <Button type="button" variant="outline" disabled={submitting || !job} onClick={() => onConfirmGlobal()}>
+              {submitting ? "提交中…" : globalConfirmLabel}
+            </Button>
+          ) : null}
           <Button
             type="button"
             disabled={submitting || selectedId == null || !job}
@@ -151,7 +165,7 @@ export function ScheduledJobExecuteSheet({
               if (selectedId != null) onConfirm(selectedId);
             }}
           >
-            {submitting ? "提交中…" : "确认执行"}
+            {submitting ? "提交中…" : confirmLabel}
           </Button>
         </SheetFooter>
       </SheetContent>

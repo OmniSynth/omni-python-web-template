@@ -15,6 +15,8 @@ export interface BoundTenantInfo {
   org_credit_code: string;
   dept_id?: number | null;
   dept_name?: string | null;
+  expires_at?: string | null;
+  expired?: boolean;
 }
 
 export interface AuthUser {
@@ -27,6 +29,8 @@ export interface AuthUser {
   tenant_id?: number | null;
   dept_id?: number | null;
   need_tenant_select?: boolean;
+  /** 当前会话租户套餐是否已过期（软锁定只读） */
+  tenant_expired?: boolean;
 }
 
 export interface LoginResponse {

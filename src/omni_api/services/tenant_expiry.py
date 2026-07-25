@@ -1,4 +1,4 @@
-"""租户套餐到期：常量、判定与踢下线。"""
+"""租户套餐到期：常量、判定与软锁定同步。"""
 
 from __future__ import annotations
 
@@ -11,8 +11,9 @@ from omni_api.data.mysql.utc import utc_now
 from omni_api.data.redis.session_store import SessionStore
 from omni_api.services.session_resolve_cache import set_cached_session
 
-TENANT_EXPIRED_MSG = "租户套餐已到期，请联系管理员续费"
+TENANT_EXPIRED_MSG = "套餐已过期，请联系管理员续费"
 DEFAULT_TENANT_TTL_DAYS = 7
+EXPIRED_TENANT_LIST_LIMIT = 500
 
 
 def default_tenant_expires_at() -> datetime:
@@ -27,8 +28,8 @@ def is_expired_at(expires_at: datetime | None) -> bool:
     return expires_at <= utc_now()
 
 
-async def kick_expired_tenant_sessions(*, tenant_id: int | None = None) -> str:
-    """踢掉已过期租户下的在线会话；可限定单个租户。"""
+async def sync_expired_tenant_session_flags(*, tenant_id: int | None = None) -> str:
+    """将过期租户下在线会话标记为软锁定（保留会话，不踢下线）。"""
     tenants = TenantRepo(mysql_engine())
     store = SessionStore()
     expired_ids = await tenants.list_expired_tenant_ids(tenant_id=tenant_id)
@@ -37,7 +38,7 @@ async def kick_expired_tenant_sessions(*, tenant_id: int | None = None) -> str:
     expired_set = set(expired_ids)
     user_ids = await tenants.list_user_ids_for_tenants(expired_ids)
 
-    async def _kick_user(uid: int) -> int:
+    async def _mark_user(uid: int) -> int:
         tokens = await asyncio.to_thread(store.list_user_tokens, uid)
         count = 0
         for token in tokens:
@@ -47,10 +48,15 @@ async def kick_expired_tenant_sessions(*, tenant_id: int | None = None) -> str:
             tid = session.get("tenant_id")
             if tid is None or int(tid) not in expired_set:
                 continue
-            await asyncio.to_thread(store.delete, token, reason=TENANT_EXPIRED_MSG)
-            set_cached_session(token, None)
-            count += 1
+            if session.get("tenant_expired"):
+                continue
+            updated = await asyncio.to_thread(
+                store.update, token, {"tenant_expired": True}
+            )
+            if updated is not None:
+                set_cached_session(token, updated)
+                count += 1
         return count
 
-    kicked = sum(await asyncio.gather(*[_kick_user(uid) for uid in user_ids]))
-    return f"已踢下线 {kicked} 个会话，涉及 {len(expired_ids)} 个过期租户"
+    marked = sum(await asyncio.gather(*[_mark_user(uid) for uid in user_ids]))
+    return f"已软锁定 {marked} 个会话，涉及 {len(expired_ids)} 个过期租户"

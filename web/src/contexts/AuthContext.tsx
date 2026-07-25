@@ -10,7 +10,7 @@ import {
 import { type LoginResult, type RegisterResult, useAuthStore } from "@/stores/auth-store";
 import type { AuthUser, BoundTenantInfo, PermissionInfo } from "@/types/auth";
 
-/** 与后端租户到期巡检节奏对齐，及时弹出套餐到期提示 */
+/** 同步会话中的 tenant_expired 软锁定状态 */
 const SESSION_PROBE_INTERVAL_MS = 5000;
 
 interface AuthContextValue {
@@ -78,7 +78,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     const timer = window.setInterval(() => {
-      void api.auth.me().catch(() => undefined);
+      void api.auth
+        .me()
+        .then((next) => {
+          const current = useAuthStore.getState().user;
+          if (!current) return;
+          if (
+            current.tenant_expired !== next.tenant_expired ||
+            current.tenant_id !== next.tenant_id ||
+            current.need_tenant_select !== next.need_tenant_select
+          ) {
+            useAuthStore.setState({ user: { ...current, ...next } });
+          }
+        })
+        .catch(() => undefined);
     }, SESSION_PROBE_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [user]);

@@ -40,6 +40,7 @@ class AuthUser(BaseModel):
     tenant_id: int | None = None
     dept_id: int | None = None
     need_tenant_select: bool = False
+    tenant_expired: bool = Field(default=False, description="当前会话租户是否已套餐过期（软锁定只读）")
 
 
 class LoginRequest(BaseModel):

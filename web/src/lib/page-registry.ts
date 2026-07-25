@@ -15,6 +15,10 @@ const PermissionsPage = lazyNamedPage(() => import("@/pages/PermissionsPage"), "
 const OrgsPage = lazyNamedPage(() => import("@/pages/OrgsPage"), "OrgsPage");
 const TenantsPage = lazyNamedPage(() => import("@/pages/TenantsPage"), "TenantsPage");
 const ScheduledJobsPage = lazyNamedPage(() => import("@/pages/ScheduledJobsPage"), "ScheduledJobsPage");
+const TenantScheduledJobsPage = lazyNamedPage(
+  () => import("@/pages/TenantScheduledJobsPage"),
+  "TenantScheduledJobsPage",
+);
 const DeptsPage = lazyNamedPage(() => import("@/pages/DeptsPage"), "DeptsPage");
 const ProfilePage = lazyNamedPage(() => import("@/pages/ProfilePage"), "ProfilePage");
 const DevParamsPage = lazyNamedPage(() => import("@/pages/DevParamsPage"), "DevParamsPage");
@@ -25,6 +29,7 @@ export const PAGE_REGISTRY: Record<string, LazyExoticComponent<ComponentType>> =
   roles: RolesPage,
   audit: AuditLogsPage,
   scheduled_jobs: ScheduledJobsPage,
+  tenant_scheduled_jobs: TenantScheduledJobsPage,
   permissions: PermissionsPage,
   orgs: OrgsPage,
   tenants: TenantsPage,
@@ -43,6 +48,7 @@ const PAGE_IMPORTERS: Partial<Record<string, () => Promise<unknown>>> = {
   roles: () => import("@/pages/RolesPage"),
   audit: () => import("@/pages/AuditLogsPage"),
   scheduled_jobs: () => import("@/pages/ScheduledJobsPage"),
+  tenant_scheduled_jobs: () => import("@/pages/TenantScheduledJobsPage"),
   permissions: () => import("@/pages/PermissionsPage"),
   orgs: () => import("@/pages/OrgsPage"),
   tenants: () => import("@/pages/TenantsPage"),

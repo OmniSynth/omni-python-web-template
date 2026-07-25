@@ -36,7 +36,8 @@
 | `orgs` | `main` | OrgsPage | 无 | 前端 |
 | `dev_params` | `main` | DevParamsPage | 服务端 | 后端 `sort_by` |
 | `dev_params` | `detail-params` | DevParamGroupDetailSheet | — | — |
-| `scheduled_jobs` | `main` | ScheduledJobsPage | 服务端 | 后端 `sort_by` |
+| `scheduled_jobs` | `main` | ScheduledJobsPage | 客户端 | — |
+| `tenant_scheduled_jobs` | `main` | TenantScheduledJobsPage | 客户端 | — |
 
 ## 偏好 JSON Schema
 

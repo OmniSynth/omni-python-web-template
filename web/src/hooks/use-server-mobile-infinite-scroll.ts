@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { TableMobileInfiniteScrollProps } from "@/components/table/table-mobile-infinite-scroll";
+import { guardTenantListPage } from "@/lib/tenant-expiry";
 
 type UseServerMobileInfiniteScrollOptions<T> = {
   pageRows: T[];
@@ -51,7 +52,9 @@ export function useServerMobileInfiniteScroll<T>({
 
   const loadMore = useCallback(() => {
     if (loading || !hasMore) return;
-    onPageChange(page + 1);
+    const next = page + 1;
+    if (!guardTenantListPage(next)) return;
+    onPageChange(next);
   }, [hasMore, loading, onPageChange, page]);
 
   const infiniteScroll = useMemo<TableMobileInfiniteScrollProps>(

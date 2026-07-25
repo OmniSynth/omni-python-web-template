@@ -12,6 +12,7 @@ from omni_api.data.mysql.biz_table import (
     SYS_ROLE_PERMISSIONS,
     SYS_ROLES,
     SYS_SCHEDULED_JOB,
+    SYS_SCHEDULED_JOB_TENANT,
     SYS_TENANT,
     SYS_TENANT_SYSTEM_ROLE,
     SYS_USER,
@@ -230,14 +231,35 @@ CREATE TABLE IF NOT EXISTS {SYS_SCHEDULED_JOB} (
     code VARCHAR(64) NOT NULL UNIQUE{cmt("任务编码")},
     name VARCHAR(128) NOT NULL{cmt("任务名称")},
     description VARCHAR(512) NOT NULL DEFAULT ''{cmt("描述")},
+    scope VARCHAR(16) NOT NULL DEFAULT 'tenant'{cmt("任务范围：system系统 tenant租户")},
     cron_expr VARCHAR(64) NOT NULL{cmt("Cron表达式")},
     enabled TINYINT NOT NULL DEFAULT 1{ENABLED_FLAG},
     last_run_at DATETIME(6) NULL{cmt("上次运行时间(UTC)")},
-    last_run_status VARCHAR(16) NULL{cmt("上次运行状态 ok成功 error失败")},
+    last_run_status VARCHAR(16) NULL{cmt("上次运行状态：success成功 failure失败 running执行中")},
     last_run_message VARCHAR(512) NOT NULL DEFAULT ''{cmt("上次运行消息")},
     next_run_at DATETIME(6) NULL{cmt("下次运行时间(UTC)")},
     {AUDIT_COLUMN_DEFS.strip()},
-    KEY idx_scheduled_job_enabled (enabled)
+    KEY idx_scheduled_job_enabled (enabled),
+    KEY idx_scheduled_job_scope (scope)
+);
+"""
+
+
+def create_scheduled_job_tenant_sql() -> str:
+    return f"""
+CREATE TABLE IF NOT EXISTS {SYS_SCHEDULED_JOB_TENANT} (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY{ID_PK},
+    job_code VARCHAR(64) NOT NULL{cmt("任务编码，对应 t_sys_scheduled_job.code")},
+    tenant_id BIGINT NOT NULL{cmt("租户 ID")},
+    enabled TINYINT NOT NULL DEFAULT 1{cmt("租户侧调度是否启用：1启用 0停止")},
+    last_run_at DATETIME(6) NULL{cmt("该租户上次运行时间(UTC)")},
+    last_run_status VARCHAR(16) NULL{cmt("该租户上次运行状态：success成功 failure失败 running执行中")},
+    last_run_message VARCHAR(512) NOT NULL DEFAULT ''{cmt("该租户上次运行消息")},
+    {AUDIT_COLUMN_DEFS.strip()},
+    UNIQUE KEY uk_scheduled_job_tenant (job_code, tenant_id),
+    KEY idx_scheduled_job_tenant_tid (tenant_id),
+    CONSTRAINT fk_scheduled_job_tenant_job FOREIGN KEY (job_code) REFERENCES {SYS_SCHEDULED_JOB} (code),
+    CONSTRAINT fk_scheduled_job_tenant_tenant FOREIGN KEY (tenant_id) REFERENCES {SYS_TENANT} (id)
 );
 """
 
@@ -255,5 +277,6 @@ def all_sys_ddl_statements() -> list[str]:
         + create_permissions_sql()
         + create_user_table_preference_sql()
         + create_scheduled_job_sql()
+        + create_scheduled_job_tenant_sql()
     )
     return [s.strip() for s in raw.split(";") if s.strip()]

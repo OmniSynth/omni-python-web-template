@@ -22,8 +22,6 @@ from omni_api.services.session_resolve_cache import (
     set_cached_session,
     set_cached_tenant_active,
 )
-from omni_api.services.tenant_expiry import TENANT_EXPIRED_MSG, is_expired_at
-
 logger = logging.getLogger(__name__)
 
 NO_TENANT_ACCESS_MSG = "未开通访问权限，请联系管理员"
@@ -73,7 +71,9 @@ class SessionService:
     ) -> dict[str, Any]:
         roles: list[str] = []
         permissions: list[str] = []
+        tenant_expired = False
         if tenant_id is not None and not need_tenant_select:
+            tenant_expired = await self._tenants.is_tenant_expired(tenant_id)
             role_repo = RoleRepo(self._engine, tenant_id=tenant_id)
             if sync_tenant_permissions:
                 try:
@@ -100,6 +100,7 @@ class SessionService:
             "permissions": permissions,
             "bound_tenants": bound_tenants,
             "need_tenant_select": need_tenant_select,
+            "tenant_expired": tenant_expired,
         }
 
     def _to_auth_user(self, session: dict[str, Any]) -> AuthUser:
@@ -113,6 +114,7 @@ class SessionService:
             tenant_id=session.get("tenant_id"),
             dept_id=session.get("dept_id"),
             need_tenant_select=bool(session.get("need_tenant_select")),
+            tenant_expired=bool(session.get("tenant_expired")),
         )
 
     @staticmethod
@@ -137,14 +139,19 @@ class SessionService:
     ) -> dict[str, Any] | None:
         tenant_id = session.get("tenant_id")
         if tenant_id is None or session.get("need_tenant_select"):
+            if session.get("tenant_expired"):
+                updated = await asyncio.to_thread(
+                    self._store.update, token, {"tenant_expired": False}
+                )
+                return updated if updated is not None else {**session, "tenant_expired": False}
             return session
         tid = int(tenant_id)
-        if await self._tenants.is_tenant_expired(tid):
-            await asyncio.to_thread(
-                self._store.delete, token, reason=TENANT_EXPIRED_MSG
+        expired = await self._tenants.is_tenant_expired(tid)
+        if bool(session.get("tenant_expired")) != expired:
+            updated = await asyncio.to_thread(
+                self._store.update, token, {"tenant_expired": expired}
             )
-            set_cached_session(token, None)
-            return None
+            session = updated if updated is not None else {**session, "tenant_expired": expired}
         user_id = int(session["user_id"])
         cached_active = get_cached_tenant_active(user_id, tid)
         if not isinstance(cached_active, _MissingType):
@@ -164,18 +171,13 @@ class SessionService:
     async def _filter_usable_bindings(
         self, bindings: list[UserTenantBinding]
     ) -> list[UserTenantBinding]:
+        """启用中的租户可用；已过期仍可登录，进入软锁定只读。"""
         usable: list[UserTenantBinding] = []
-        had_expired = False
         for binding in bindings:
             tenant = await self._tenants.get_by_id(binding.tenant_id)
             if tenant is None or not tenant.enabled:
                 continue
-            if is_expired_at(tenant.expires_at):
-                had_expired = True
-                continue
             usable.append(binding)
-        if not usable and had_expired:
-            raise AuthError(TENANT_EXPIRED_MSG)
         return usable
 
     async def invalidate_tenant_access(self, user_id: int, tenant_id: int) -> None:
@@ -288,8 +290,6 @@ class SessionService:
         user_id = int(session["user_id"])
         if not await self._tenants.is_user_active_in_tenant(user_id, tenant_id):
             raise AuthError("无权访问该租户")
-        if await self._tenants.is_tenant_expired(tenant_id):
-            raise AuthError(TENANT_EXPIRED_MSG)
         dept_id = await self._tenants.get_user_dept_id(user_id, tenant_id)
         bound = await self._build_bound_tenants(user_id)
         snapshot = await self._load_auth_snapshot(
@@ -321,12 +321,6 @@ class SessionService:
             return self._to_auth_user(session)
         user_id = int(session["user_id"])
         tenant_id = int(session["tenant_id"])
-        if await self._tenants.is_tenant_expired(tenant_id):
-            await asyncio.to_thread(
-                self._store.delete, token, reason=TENANT_EXPIRED_MSG
-            )
-            set_cached_session(token, None)
-            raise AuthError(TENANT_EXPIRED_MSG)
         if not await self._tenants.is_user_active_in_tenant(user_id, tenant_id):
             bound = await self._build_bound_tenants(user_id)
             snapshot = await self._load_auth_snapshot(

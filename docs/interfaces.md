@@ -14,7 +14,8 @@ Web 静态资源在 `src/omni_api/web/static/`；全局主题见 [web-theme.md](
 - 除 `POST /api/v1/auth/login`、`POST /api/v1/auth/register` 与 `GET /api/v1/health` 外，所有 API 须携带 `Authorization: Bearer <session_token>`。
 - **Session 鉴权**（非 JWT）：登录返回 `session_token`（Redis 存储）；详见 [multitenant.md](multitenant.md#session-鉴权)。
 - **管理员账号不写死在代码或 TOML**：通过 `scripts/seed_admin.py` 新建机构开通租户，并将租户管理员绑定为平台 admin；也可经公开注册接口自助开通租户。
-- 权限模型为 RBAC + 租户分表，详见 [rbac.md](rbac.md)。`GET /me` 返回 `roles`、`permissions` 与租户上下文；各 API 按权限码校验（无权限 403）。
+- 权限模型为 RBAC + 租户分表，详见 [rbac.md](rbac.md)。`GET /me` 返回 `roles`、`permissions`、`tenant_expired` 与租户上下文；各 API 按权限码校验（无权限 403）。
+- **套餐过期软锁定**：当前会话租户已过期时，非白名单写操作与 `page>1` 返回 403（文案「套餐已过期，请联系管理员续费」）；列表 JSON 最多 500 条。详见 [multitenant.md](multitenant.md#套餐到期软锁定)。
 
 ### 初始化
 
@@ -45,7 +46,8 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 | `/sys/orgs` | 机构管理（需 `menu.orgs`） |
 | `/sys/tenants` | 租户管理（需 `menu.tenants`） |
 | `/sys/audit` | 审计日志（需 `menu.audit`） |
-| `/sys/scheduled-jobs` | 定时任务管理（需 `menu.scheduled_jobs`） |
+| `/sys/scheduled-jobs` | 系统定时任务管理（需 `menu.scheduled_jobs`） |
+| `/scheduled-jobs` | 租户定时任务（手动触发，需 `menu.tenant_scheduled_jobs`） |
 | `/dev-params` | 开发参数（需 `menu.dev_params`） |
 
 源码：`web/`。构建：`cd web && npm run build`。主题与响应式布局见 [web-theme.md](web-theme.md#响应式布局)。审计说明见 [audit-logging.md](audit-logging.md)。
@@ -56,10 +58,10 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/login` | 账号密码登录，返回 `session_token`；租户套餐已到期时 401，文案「租户套餐已到期，请联系管理员续费」 |
+| POST | `/login` | 账号密码登录，返回 `session_token`；租户套餐已过期仍可登录，`user.tenant_expired=true`（软锁定只读） |
 | POST | `/register` | 公开注册：必填机构名称/类型/信用代码/手机号/省市区与区划码；系统生成管理员密码，开通机构与租户后返回 `session_token` 与一次性 `admin_credentials`（手机号为账号） |
 | POST | `/logout` | 删除 Redis 会话（需 Bearer） |
-| GET | `/me` | 当前用户、租户角色与权限（从 DB 重载并写回会话；需登录） |
+| GET | `/me` | 当前用户、租户角色与权限（含 `tenant_expired`；从 DB 重载并写回会话；需登录） |
 | GET | `/nav` | 侧栏导航树，按当前租户用户权限过滤（需登录） |
 | GET | `/tenants` | 用户绑定的租户列表（含编码、地区、机构信息；需登录） |
 | POST | `/switch-tenant` | 切换当前租户上下文（需登录） |
@@ -210,19 +212,27 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 
 | 方法 | 路径 | 权限码 | 说明 |
 |---|---|---|---|
-| GET | `/` | `system.scheduled_job.list` | 任务列表（含调度状态、`requires_tenant`、上次/下次执行） |
-| GET | `/tenant-options` | `system.scheduled_job.trigger` | 执行前租户选择（`q` 匹配租户名/手机号/机构名/统一社会信用代码；分页） |
+| GET | `/` | `system.scheduled_job.list` | 任务列表（含 `scope`、调度状态、上次/下次执行） |
+| GET | `/tenant-options` | `system.scheduled_job.list` | 租户选择（执行/按租户停止；`q` 分页搜索） |
 | GET | `/{code}` | `system.scheduled_job.read` | 任务详情 |
-| PUT | `/{code}` | `system.scheduled_job.update` | 更新 cron（5 段或 6 段秒级）或启用状态 |
-| POST | `/{code}/trigger` | `system.scheduled_job.trigger` | 立即触发（body 可选 `{ tenant_id }`；`requires_tenant=true` 时必填；202） |
-| POST | `/{code}/start` | `system.scheduled_job.control` | 启动调度 |
-| POST | `/{code}/stop` | `system.scheduled_job.control` | 停止调度 |
+| PUT | `/{code}` | `system.scheduled_job.update` | 更新 cron（5/6 段）或启用状态 |
+| POST | `/{code}/trigger` | `system.scheduled_job.trigger` | 立即触发（`scope=tenant` 时 body 必填 `tenant_id`；202，文案「同步任务已开始执行」；并发中再触发仍返回相同成功文案） |
+| POST | `/{code}/start` | `system.scheduled_job.control` | 启动全局调度 |
+| POST | `/{code}/stop` | `system.scheduled_job.control` | 停止；body 可选 `{ tenant_id }`：有则停止该租户调度，无则停止任务全局调度 |
 
-内置任务由 `services/scheduled_job_registry.py` 注册，配置持久化于 `t_sys_scheduled_job`。
+### 租户定时任务 `/api/v1/tenant/scheduled-jobs`（需当前租户上下文）
 
-- cron：支持标准 5 段（分 时 日 月 周）与 6 段（秒 分 时 日 月 周）。
-- 内置 `tenant_expiry_check`（租户套餐到期检查）：默认 `*/5 * * * * *`，`requires_tenant=false`；扫描已到期租户并踢下线对应会话。
-- 租户级任务手动触发时在右侧抽屉选择目标租户；平台级任务直接执行。
+| 方法 | 路径 | 权限码 | 说明 |
+|---|---|---|---|
+| GET | `/` | `tenant.scheduled_job.list` | 本租户可见的 `scope=tenant` 任务及本租户最近执行状态 |
+| POST | `/{code}/trigger` | `tenant.scheduled_job.trigger` | 对本租户手动触发（临时刷新；202，文案同上；并发去重） |
+
+内置任务由 `services/scheduled_job_registry.py` 注册；`scope`：`system` / `tenant`。配置在 `t_sys_scheduled_job`，租户调度启停在 `t_sys_scheduled_job_tenant`。
+
+- cron：5 段或 6 段（秒级）。
+- 内置 `tenant_expiry_check`：`scope=system`，默认 `*/5 * * * * *`。
+- 租户任务到点后按启用且未过期租户扇出；单租户可用 stop+`tenant_id` 停止其调度；手动触发不受「租户调度已停止」影响。
+- **过期租户**不可执行租户任务。
 
 ### 通用
 

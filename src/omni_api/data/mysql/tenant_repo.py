@@ -191,6 +191,18 @@ class TenantRepo:
             rows = (await conn.execute(sql, params)).fetchall()
         return [int(row[0]) for row in rows]
 
+    async def list_active_tenant_ids(self) -> list[int]:
+        """启用且未过期的租户 ID（供租户级定时任务扇出）。"""
+        from omni_api.data.mysql.utc import utc_now
+
+        sql = text(
+            f"SELECT id FROM {SYS_TENANT} WHERE enabled = 1 "
+            f"AND (expires_at IS NULL OR expires_at > :now) ORDER BY id"
+        )
+        async with self._engine.connect() as conn:
+            rows = (await conn.execute(sql, {"now": utc_now()})).fetchall()
+        return [int(row[0]) for row in rows]
+
     async def list_user_ids_for_tenants(self, tenant_ids: list[int]) -> list[int]:
         """曾绑定过这些租户的用户 ID（用于扫描在线会话）。"""
         if not tenant_ids:
@@ -514,7 +526,7 @@ class TenantRepo:
 
         for b in bindings:
             tenant = await self.get_by_id(b.tenant_id)
-            if tenant is None or not tenant.enabled or is_expired_at(tenant.expires_at):
+            if tenant is None or not tenant.enabled:
                 continue
             dept_name: str | None = None
             if b.dept_id is not None:
@@ -533,6 +545,8 @@ class TenantRepo:
                     org_credit_code=org.credit_code if org else "",
                     dept_id=b.dept_id,
                     dept_name=dept_name,
+                    expires_at=tenant.expires_at,
+                    expired=is_expired_at(tenant.expires_at),
                 )
             )
         return result

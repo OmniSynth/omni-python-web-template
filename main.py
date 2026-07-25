@@ -26,6 +26,7 @@ from omni_api.api import (
     table_preferences_router,
     tenant_depts_router,
     tenant_roles_router,
+    tenant_scheduled_jobs_router,
     tenant_users_router,
     tenants_router,
     user_profile_router,
@@ -34,6 +35,7 @@ from omni_api.api import (
 from omni_api.api.actor_middleware import ActorMiddleware
 from omni_api.api.permission_middleware import PermissionMiddleware
 from omni_api.api.request_audit_middleware import RequestAuditMiddleware
+from omni_api.api.tenant_expiry_middleware import TenantExpiryMiddleware
 from omni_api.config.local_ip import primary_lan_ip
 from omni_api.config.settings import get_settings
 from omni_api.data.mysql.sql_audit_listener import (
@@ -103,6 +105,7 @@ def _mount_spa(app: FastAPI) -> None:
 def create_app(*, api: bool = True, web: bool = True) -> FastAPI:
     app = FastAPI(title="omni-python-web-template", version="0.1.0", lifespan=lifespan)
     app.add_middleware(ActorMiddleware)
+    app.add_middleware(TenantExpiryMiddleware)
     app.add_middleware(PermissionMiddleware)
     app.add_middleware(RequestAuditMiddleware)
     if api:
@@ -120,6 +123,7 @@ def create_app(*, api: bool = True, web: bool = True) -> FastAPI:
         app.include_router(tenant_users_router)
         app.include_router(tenant_roles_router)
         app.include_router(tenant_depts_router)
+        app.include_router(tenant_scheduled_jobs_router)
         app.include_router(depts_router)
         app.include_router(dev_params_router)
     if web:

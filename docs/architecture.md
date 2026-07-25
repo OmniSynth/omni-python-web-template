@@ -14,7 +14,7 @@ L5 基础     config/、schemas/
 
 应用业务时间在 MySQL/API 层统一 UTC；用户时区展示与筛选转换仅在 Web 边界，见 [datetime.md](datetime.md)。
 
-定时调度：`services/scheduled_job_manager`（`main.py` lifespan，按 `t_sys_scheduled_job` 的 cron，支持 5/6 段秒级）；管理页 `/sys/scheduled-jobs`。内置任务在 `services/scheduled_job_registry.py` 注册（含 `tenant_expiry_check`）。
+定时调度：`services/scheduled_job_manager`（`main.py` lifespan）。任务含 `scope=system|tenant`；系统任务全局调度，租户任务按启用租户扇出；租户启停状态在 `t_sys_scheduled_job_tenant`。平台页 `/sys/scheduled-jobs`，租户设置页 `/scheduled-jobs`（仅手动触发）。注册表：`services/scheduled_job_registry.py`。
 
 审计：`RequestAuditMiddleware` → `audit_request_logs`；业务 API / `AuditService` → `audit_operation_logs`；冷归档见 [audit-logging.md](audit-logging.md)。
 

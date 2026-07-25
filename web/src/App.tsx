@@ -4,6 +4,7 @@ import { BlockingErrorHost } from "@/components/form/blocking-error-host";
 import { AppShell } from "@/components/layout/AppShell";
 import { PendingRegisterCredentialsHost } from "@/components/PendingRegisterCredentialsHost";
 import { RequireAuth, RequirePermission } from "@/components/RequireAuth";
+import { TenantExpiredNoticeHost } from "@/components/TenantExpiredNoticeHost";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -71,6 +72,7 @@ export function App() {
             <BrowserRouter>
               <AppRoutes />
               <PendingRegisterCredentialsHost />
+              <TenantExpiredNoticeHost />
             </BrowserRouter>
             <Toaster />
             <BlockingErrorHost />

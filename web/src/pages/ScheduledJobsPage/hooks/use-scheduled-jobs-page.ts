@@ -2,9 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useTimezone } from "@/contexts/TimezoneContext";
 import { useClientTable } from "@/hooks/useClientTable";
 import { api } from "@/lib/api";
+import { showToastSuccess } from "@/lib/form-feedback";
 import type { ScheduledJobRecord } from "@/types/scheduled-job";
 import { useScheduledJobColumns } from "./use-scheduled-job-columns";
 import { useScheduledJobsPageActions } from "./use-scheduled-jobs-page-actions";
+
+type TenantSheetMode = "trigger" | "stop";
 
 export function useScheduledJobsPage() {
   const { formatDateTime } = useTimezone();
@@ -17,10 +20,11 @@ export function useScheduledJobsPage() {
   const [sectionError, setSectionError] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionCode, setActionCode] = useState<string | null>(null);
-  const [executeOpen, setExecuteOpen] = useState(false);
-  const [triggering, setTriggering] = useState<ScheduledJobRecord | null>(null);
-  const [executeError, setExecuteError] = useState("");
-  const [executeSubmitting, setExecuteSubmitting] = useState(false);
+  const [tenantSheetOpen, setTenantSheetOpen] = useState(false);
+  const [targeting, setTargeting] = useState<ScheduledJobRecord | null>(null);
+  const [tenantSheetMode, setTenantSheetMode] = useState<TenantSheetMode>("trigger");
+  const [tenantSheetError, setTenantSheetError] = useState("");
+  const [tenantSheetSubmitting, setTenantSheetSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -48,24 +52,45 @@ export function useScheduledJobsPage() {
     load,
     editing,
     cronExpr,
-    triggering,
+    targeting,
+    tenantSheetMode,
     setActionCode,
     setSectionError,
     setSaving,
     setSheetOpen,
     setEditing,
-    setExecuteOpen,
-    setTriggering,
-    setExecuteError,
-    setExecuteSubmitting,
+    setTenantSheetOpen,
+    setTargeting,
+    setTenantSheetMode,
+    setTenantSheetError,
+    setTenantSheetSubmitting,
   });
+
+  const handleConfirmGlobalStop = useCallback(async () => {
+    if (!targeting) return;
+    setTenantSheetSubmitting(true);
+    setTenantSheetError("");
+    setActionCode(targeting.code);
+    try {
+      await api.scheduledJobs.stop(targeting.code);
+      showToastSuccess(`已停止「${targeting.name}」全局调度`);
+      setTenantSheetOpen(false);
+      setTargeting(null);
+      await load();
+    } catch (error) {
+      setTenantSheetError(error instanceof Error ? error.message : "停止失败");
+    } finally {
+      setTenantSheetSubmitting(false);
+      setActionCode(null);
+    }
+  }, [load, targeting]);
 
   const columns = useScheduledJobColumns({
     formatDateTime,
     onEdit: openEdit,
     onTrigger: actions.openExecute,
     onStart: actions.handleStart,
-    onStop: actions.handleStop,
+    onStop: actions.openStop,
     actionCode,
   });
 
@@ -90,13 +115,15 @@ export function useScheduledJobsPage() {
     sectionError,
     saving,
     handleSave: actions.handleSave,
-    executeOpen,
-    setExecuteOpen,
-    triggering,
-    setTriggering,
-    executeError,
-    executeSubmitting,
-    handleConfirmExecute: actions.handleConfirmExecute,
+    tenantSheetOpen,
+    setTenantSheetOpen,
+    targeting,
+    setTargeting,
+    tenantSheetMode,
+    tenantSheetError,
+    tenantSheetSubmitting,
+    handleConfirmTenantSheet: actions.handleConfirmTenantSheet,
+    handleConfirmGlobalStop,
     load,
   };
 }

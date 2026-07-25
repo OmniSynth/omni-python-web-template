@@ -202,6 +202,8 @@ class BoundTenantInfo(BaseModel):
     org_credit_code: str = ""
     dept_id: int | None = None
     dept_name: str | None = None
+    expires_at: UtcDateTime | None = None
+    expired: bool = False
 
 
 class UserTenantBinding(BaseModel):

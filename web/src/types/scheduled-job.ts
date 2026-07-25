@@ -1,14 +1,17 @@
 export type ScheduledJobRunStatus = "success" | "failure" | "running";
 
+export type ScheduledJobScope = "system" | "tenant";
+
 export type ScheduledJobRecord = {
   id: number;
   code: string;
   name: string;
   description: string;
+  scope: ScheduledJobScope;
   cron_expr: string;
   enabled: boolean;
   active: boolean;
-  /** 手动触发是否必须选择租户；平台级任务为 false */
+  /** 与 scope=tenant 等价，兼容旧字段 */
   requires_tenant: boolean;
   last_run_at: string | null;
   last_run_status: ScheduledJobRunStatus | null;
@@ -18,10 +21,26 @@ export type ScheduledJobRecord = {
   updated_at: string | null;
 };
 
+export type TenantScheduledJobRecord = {
+  code: string;
+  name: string;
+  description: string;
+  scope: ScheduledJobScope;
+  schedule_enabled: boolean;
+  last_run_at: string | null;
+  last_run_status: ScheduledJobRunStatus | null;
+  last_run_message: string;
+};
+
 export const SCHEDULED_JOB_STATUS_LABELS: Record<string, string> = {
   success: "成功",
   failure: "失败",
   running: "执行中",
+};
+
+export const SCHEDULED_JOB_SCOPE_LABELS: Record<ScheduledJobScope, string> = {
+  system: "系统",
+  tenant: "租户",
 };
 
 export type ScheduledJobTenantOption = {

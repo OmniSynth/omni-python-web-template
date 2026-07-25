@@ -1,38 +1,49 @@
 import { useCallback } from "react";
 import { api } from "@/lib/api";
+import { TRIGGER_ACCEPTED_MSG } from "@/lib/api/scheduled-jobs";
 import { showToastError, showToastSuccess } from "@/lib/form-feedback";
 import type { ScheduledJobRecord } from "@/types/scheduled-job";
+
+type TenantSheetMode = "trigger" | "stop";
 
 type ScheduledJobActionsOptions = {
   load: () => Promise<void>;
   editing: ScheduledJobRecord | null;
   cronExpr: string;
-  triggering: ScheduledJobRecord | null;
+  targeting: ScheduledJobRecord | null;
+  tenantSheetMode: TenantSheetMode;
   setActionCode: (code: string | null) => void;
   setSectionError: (message: string) => void;
   setSaving: (saving: boolean) => void;
   setSheetOpen: (open: boolean) => void;
   setEditing: (job: ScheduledJobRecord | null) => void;
-  setExecuteOpen: (open: boolean) => void;
-  setTriggering: (job: ScheduledJobRecord | null) => void;
-  setExecuteError: (message: string) => void;
-  setExecuteSubmitting: (submitting: boolean) => void;
+  setTenantSheetOpen: (open: boolean) => void;
+  setTargeting: (job: ScheduledJobRecord | null) => void;
+  setTenantSheetMode: (mode: TenantSheetMode) => void;
+  setTenantSheetError: (message: string) => void;
+  setTenantSheetSubmitting: (submitting: boolean) => void;
 };
+
+function needsTenant(job: ScheduledJobRecord): boolean {
+  return job.scope === "tenant" || job.requires_tenant;
+}
 
 export function useScheduledJobsPageActions({
   load,
   editing,
   cronExpr,
-  triggering,
+  targeting,
+  tenantSheetMode,
   setActionCode,
   setSectionError,
   setSaving,
   setSheetOpen,
   setEditing,
-  setExecuteOpen,
-  setTriggering,
-  setExecuteError,
-  setExecuteSubmitting,
+  setTenantSheetOpen,
+  setTargeting,
+  setTenantSheetMode,
+  setTenantSheetError,
+  setTenantSheetSubmitting,
 }: ScheduledJobActionsOptions) {
   const runAction = useCallback(
     async (job: ScheduledJobRecord, action: () => Promise<unknown>, successMessage: string) => {
@@ -60,46 +71,70 @@ export function useScheduledJobsPageActions({
 
   const openExecute = useCallback(
     (job: ScheduledJobRecord) => {
-      if (!job.requires_tenant) {
-        void runAction(job, () => api.scheduledJobs.trigger(job.code), `已触发「${job.name}」`);
+      if (!needsTenant(job)) {
+        void runAction(job, () => api.scheduledJobs.trigger(job.code), TRIGGER_ACCEPTED_MSG);
         return;
       }
-      setTriggering(job);
-      setExecuteError("");
-      setExecuteOpen(true);
+      setTenantSheetMode("trigger");
+      setTargeting(job);
+      setTenantSheetError("");
+      setTenantSheetOpen(true);
     },
-    [runAction, setExecuteError, setExecuteOpen, setTriggering],
+    [runAction, setTargeting, setTenantSheetError, setTenantSheetMode, setTenantSheetOpen],
   );
 
-  const handleConfirmExecute = useCallback(
+  const openStop = useCallback(
+    (job: ScheduledJobRecord) => {
+      if (!needsTenant(job)) {
+        void runAction(job, () => api.scheduledJobs.stop(job.code), `已停止「${job.name}」`);
+        return;
+      }
+      setTenantSheetMode("stop");
+      setTargeting(job);
+      setTenantSheetError("");
+      setTenantSheetOpen(true);
+    },
+    [runAction, setTargeting, setTenantSheetError, setTenantSheetMode, setTenantSheetOpen],
+  );
+
+  const handleConfirmTenantSheet = useCallback(
     async (tenantId: number) => {
-      if (!triggering) return;
-      setExecuteSubmitting(true);
-      setExecuteError("");
-      setActionCode(triggering.code);
+      if (!targeting) return;
+      setTenantSheetSubmitting(true);
+      setTenantSheetError("");
+      setActionCode(targeting.code);
       try {
-        const result = await api.scheduledJobs.trigger(triggering.code, { tenant_id: tenantId });
-        showToastSuccess(result.message || "同步任务已开始，请稍后刷新查看结果");
-        setExecuteOpen(false);
-        setTriggering(null);
+        if (tenantSheetMode === "stop") {
+          await api.scheduledJobs.stop(targeting.code, { tenant_id: tenantId });
+          showToastSuccess(`已停止「${targeting.name}」在所选租户的调度`);
+        } else {
+          const result = await api.scheduledJobs.trigger(targeting.code, { tenant_id: tenantId });
+          showToastSuccess(result.message || TRIGGER_ACCEPTED_MSG);
+        }
+        setTenantSheetOpen(false);
+        setTargeting(null);
         await load();
       } catch (error) {
-        setExecuteError(error instanceof Error ? error.message : "执行失败");
+        setTenantSheetError(error instanceof Error ? error.message : "操作失败");
       } finally {
-        setExecuteSubmitting(false);
+        setTenantSheetSubmitting(false);
         setActionCode(null);
       }
     },
-    [load, setActionCode, setExecuteError, setExecuteOpen, setExecuteSubmitting, setTriggering, triggering],
+    [
+      load,
+      setActionCode,
+      setTargeting,
+      setTenantSheetError,
+      setTenantSheetOpen,
+      setTenantSheetSubmitting,
+      targeting,
+      tenantSheetMode,
+    ],
   );
 
   const handleStart = useCallback(
     (job: ScheduledJobRecord) => runAction(job, () => api.scheduledJobs.start(job.code), `已启动「${job.name}」`),
-    [runAction],
-  );
-
-  const handleStop = useCallback(
-    (job: ScheduledJobRecord) => runAction(job, () => api.scheduledJobs.stop(job.code), `已停止「${job.name}」`),
     [runAction],
   );
 
@@ -122,9 +157,9 @@ export function useScheduledJobsPageActions({
 
   return {
     openExecute,
-    handleConfirmExecute,
+    openStop,
+    handleConfirmTenantSheet,
     handleStart,
-    handleStop,
     handleSave,
   };
 }

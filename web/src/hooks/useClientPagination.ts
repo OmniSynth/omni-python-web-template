@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useGlobalPageSize } from "@/hooks/use-global-page-size";
 import { clampPage, PAGE_SIZE_OPTIONS, slicePage, sliceThroughPages, totalPages } from "@/lib/pagination";
+import { guardTenantListPage } from "@/lib/tenant-expiry";
+import { useAuthStore } from "@/stores/auth-store";
+
+/** 过期租户列表数据上限（与后端 EXPIRED_TENANT_LIST_LIMIT 一致）。 */
+const EXPIRED_TENANT_LIST_LIMIT = 500;
 
 interface UseClientPaginationOptions {
   initialPage?: number;
@@ -12,10 +17,22 @@ export function useClientPagination<T>(items: T[], options: UseClientPaginationO
   const { pageSize, setPageSize: setGlobalPageSize } = useGlobalPageSize();
   const [page, setPage] = useState(initialPage);
   const [mobileLoadedPageCount, setMobileLoadedPageCount] = useState(1);
+  const tenantExpired = useAuthStore((s) => Boolean(s.user?.tenant_expired));
 
-  const total = items.length;
+  const sourceItems = useMemo(
+    () => (tenantExpired ? items.slice(0, EXPIRED_TENANT_LIST_LIMIT) : items),
+    [items, tenantExpired],
+  );
+  const total = sourceItems.length;
   const pages = totalPages(total, pageSize);
   const safePage = clampPage(page, total, pageSize);
+
+  useEffect(() => {
+    if (tenantExpired && page > 1) {
+      setPage(1);
+      setMobileLoadedPageCount(1);
+    }
+  }, [tenantExpired, page]);
 
   useEffect(() => {
     if (page !== safePage) {
@@ -26,18 +43,20 @@ export function useClientPagination<T>(items: T[], options: UseClientPaginationO
   // biome-ignore lint/correctness/useExhaustiveDependencies: 数据源或每页条数变化时重置手机端累积页数
   useEffect(() => {
     setMobileLoadedPageCount(1);
-  }, [items.length, pageSize]);
+  }, [sourceItems.length, pageSize]);
 
-  const pageItems = useMemo(() => slicePage(items, safePage, pageSize), [items, safePage, pageSize]);
+  const pageItems = useMemo(() => slicePage(sourceItems, safePage, pageSize), [sourceItems, safePage, pageSize]);
   const mobileItems = useMemo(
-    () => sliceThroughPages(items, mobileLoadedPageCount, pageSize),
-    [items, mobileLoadedPageCount, pageSize],
+    () => sliceThroughPages(sourceItems, mobileLoadedPageCount, pageSize),
+    [sourceItems, mobileLoadedPageCount, pageSize],
   );
   const mobileHasMore = mobileLoadedPageCount < pages;
 
   const changePage = useCallback(
     (next: number) => {
-      setPage(clampPage(next, total, pageSize));
+      const target = clampPage(next, total, pageSize);
+      if (!guardTenantListPage(target)) return;
+      setPage(target);
     },
     [pageSize, total],
   );
@@ -51,8 +70,10 @@ export function useClientPagination<T>(items: T[], options: UseClientPaginationO
   );
 
   const mobileLoadMore = useCallback(() => {
-    setMobileLoadedPageCount((current) => Math.min(current + 1, pages));
-  }, [pages]);
+    const nextCount = Math.min(mobileLoadedPageCount + 1, pages);
+    if (!guardTenantListPage(nextCount)) return;
+    setMobileLoadedPageCount(nextCount);
+  }, [mobileLoadedPageCount, pages]);
 
   return {
     page: safePage,

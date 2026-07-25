@@ -7,6 +7,7 @@ import {
   parsePageJumpInput,
   sanitizePageJumpInput,
 } from "@/lib/pagination";
+import { guardTenantListPage } from "@/lib/tenant-expiry";
 import { cn } from "@/lib/utils";
 
 export interface TablePaginationProps {
@@ -50,6 +51,10 @@ export function TablePagination({
       return;
     }
     const target = clampPage(n, total, pageSize);
+    if (!guardTenantListPage(target)) {
+      syncJump(safePage);
+      return;
+    }
     onPageChange(target);
     syncJump(target);
   }
@@ -66,6 +71,7 @@ export function TablePagination({
   }
 
   function goToPage(target: number) {
+    if (!guardTenantListPage(target)) return;
     onPageChange(target);
     syncJump(target);
   }

@@ -1,5 +1,7 @@
 import { json } from "@/lib/api/client";
-import type { ScheduledJobRecord, ScheduledJobTenantOptionPage } from "@/types/scheduled-job";
+import type { ScheduledJobRecord, ScheduledJobTenantOptionPage, TenantScheduledJobRecord } from "@/types/scheduled-job";
+
+export const TRIGGER_ACCEPTED_MSG = "同步任务已开始执行";
 
 export const scheduledJobsApi = {
   list: () => json<ScheduledJobRecord[]>("/api/v1/scheduled-jobs"),
@@ -26,8 +28,15 @@ export const scheduledJobsApi = {
     json<ScheduledJobRecord>(`/api/v1/scheduled-jobs/${encodeURIComponent(code)}/start`, {
       method: "POST",
     }),
-  stop: (code: string) =>
+  stop: (code: string, body?: { tenant_id?: number }) =>
     json<ScheduledJobRecord>(`/api/v1/scheduled-jobs/${encodeURIComponent(code)}/stop`, {
       method: "POST",
+      body: JSON.stringify(body ?? {}),
+    }),
+  listTenantJobs: () => json<TenantScheduledJobRecord[]>("/api/v1/tenant/scheduled-jobs"),
+  triggerTenantJob: (code: string) =>
+    json<{ status: string; message?: string }>(`/api/v1/tenant/scheduled-jobs/${encodeURIComponent(code)}/trigger`, {
+      method: "POST",
+      body: "{}",
     }),
 };

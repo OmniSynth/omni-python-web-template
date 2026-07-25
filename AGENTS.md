@@ -119,6 +119,31 @@ MySQL 列细节见下文「MySQL 表结构」§时间。
 - 列表筛选 UI：`PageFilterToolbar` + `DateRangeFilterField`；多视图：`PageTabBar`。
 - 参考：`web/src/lib/datetime.ts`、`contexts/TimezoneContext.tsx`、`pages/AuditLogsPage.tsx`。
 
+# 租户套餐过期（软锁定，强制）
+
+后续新增 API / 页面 / 定时任务须遵守；细则与产品语义见 `docs/multitenant.md`「套餐到期」。
+
+## 语义
+
+- 过期后**允许登录、切换租户、保持会话**；`AuthUser.tenant_expired` / 会话字段 `tenant_expired` 为真。
+- 过期租户为**只读**：可查询，不可新增 / 编辑 / 删除 / 导出 / 执行该租户定时任务。
+- 提示文案统一：`套餐已过期，请联系管理员续费`（前后端常量须一致）。
+
+## 后端
+
+- 软锁定由 `TenantExpiryMiddleware` 统一执行；**禁止**在各业务路由重复发明「过期踢下线」。
+- 过期时：非白名单的 `POST/PUT/PATCH/DELETE` → 403；带 `page>1` 的 GET → 403；列表 JSON（顶层数组或 `items`）截断为最多 **500** 条。
+- 写操作白名单仅限：`/api/v1/auth/logout`、`/api/v1/auth/switch-tenant`、`/api/v1/tenants`、`/api/v1/orgs`（平台续费/机构管理）。新增白名单须同步文档与前端 `client.ts`。
+- 租户级定时任务：过期租户跳过执行；手动触发须拒绝。平台级任务（如 `tenant_expiry_check`）除外。
+- 列表/导出/变更类新接口默认受中间件约束；若响应不是标准 list/`items` 形态但仍属「列表数据」，须在服务层自行截断到 500。
+
+## 前端
+
+- 进入工作台：`tenant_expired` 时弹窗提醒；用户关闭后 **4 小时**内不再自动弹出（`localStorage`）。
+- **翻页（page>1）、导出、新增/编辑/删除**等写操作：立即弹窗，**不受** 4 小时缓存限制；统一走 `showTenantExpiredNotice({ force: true })` / `guardTenantWritable` / `guardTenantListPage`。
+- 列表分页须走 `TablePagination` / `useClientPagination`（已内置过期翻页拦截）；禁止绕过上述守卫直接改页。
+- API 封装（`json()`）须对过期写操作与 403 过期文案强制弹窗，且**不得**因过期文案踢出登录。
+
 # Python
 
 编辑 `*.py` 时遵守：
