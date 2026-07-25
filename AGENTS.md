@@ -144,6 +144,30 @@ MySQL 列细节见下文「MySQL 表结构」§时间。
 - 列表分页须走 `TablePagination` / `useClientPagination`（已内置过期翻页拦截）；禁止绕过上述守卫直接改页。
 - API 封装（`json()`）须对过期写操作与 403 过期文案强制弹窗，且**不得**因过期文案踢出登录。
 
+# 定时任务（系统 / 租户，强制）
+
+后续新增定时任务须遵守；接口与表结构见 `docs/interfaces.md`「定时任务」。
+
+## 范围 `scope`
+
+- 每个内置任务在 `scheduled_job_registry` 显式声明 `scope`：`system` 或 `tenant`（禁止省略后依赖默认值掩盖意图）。
+- `system`：调度时 `tenant_id=None`，全局执行一份（如 `tenant_expiry_check`）。
+- `tenant`：调度时对「启用且未过期」租户扇出；执行键为 `code:tenant_id`；须尊重 `t_sys_scheduled_job_tenant.enabled`；执行前再次校验租户启用/未过期。
+- 过期租户：租户级任务自动跳过；手动触发须拒绝。平台续费前不得靠业务路由“补跑”绕过。
+
+## 启停与手动触发
+
+- 租户页「任务状态」= 全局 `enabled` ∧ 本租户 `t_sys_scheduled_job_tenant.enabled`。
+- `POST .../start`：启用全局调度时须同时 `enable_all_tenant_schedules`，避免平台启动后租户仍因历史 stop 无法执行。
+- 租户手动触发：全局或本租户调度已停止时须 400；前端对应禁用「执行」。
+- `POST .../stop`：不传 `tenant_id` → 停止任务全局调度；传 `tenant_id` → 仅停止该租户调度（仅 `scope=tenant` 允许）。
+
+## 并发与文案
+
+- 同一 `code:tenant_id`（系统任务用 `code:0`）进程内同时只跑一次；重复触发**不报错**，统一返回「同步任务已开始执行」。
+- 租户设置页仅暴露 `scope=tenant` 的列表 + 手动执行（临时刷新）；无编辑 cron / 全局启停。
+- 新增任务、权限、租户页入口时同步 `permission_seed`、`docs/interfaces.md`、`app-menu-routes`。
+
 # Python
 
 编辑 `*.py` 时遵守：

@@ -26,10 +26,11 @@ export type TenantScheduledJobRecord = {
   name: string;
   description: string;
   scope: ScheduledJobScope;
+  cron_expr: string;
   schedule_enabled: boolean;
   last_run_at: string | null;
   last_run_status: ScheduledJobRunStatus | null;
-  last_run_message: string;
+  next_run_at: string | null;
 };
 
 export const SCHEDULED_JOB_STATUS_LABELS: Record<string, string> = {

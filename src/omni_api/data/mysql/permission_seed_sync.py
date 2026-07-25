@@ -79,7 +79,12 @@ async def insert_seed_batch(engine: AsyncEngine, seeds: tuple) -> None:
             if seed.code in mapping:
                 continue
             parent_id = mapping.get(seed.parent) if seed.parent else None
-            sort_order = next_append_sort_order(max_by_parent, parent_id)
+            if seed.kind == "catalog":
+                sort_order = seed.sort_order
+                key = _parent_sort_key(parent_id)
+                max_by_parent[key] = max(max_by_parent.get(key, -1), sort_order)
+            else:
+                sort_order = next_append_sort_order(max_by_parent, parent_id)
             result = await conn.execute(
                 insert_sql,
                 {
@@ -152,6 +157,28 @@ async def sync_seed_api_routes(engine: AsyncEngine) -> None:
             )
 
 
+async def sync_catalog_defaults(engine: AsyncEngine) -> None:
+    """目录名称与默认排序以种子为准：设置 > 系统配置 > 平台管理。"""
+    mapping = await code_to_id(engine)
+    update_sql = text(
+        f"UPDATE {_P} SET name=:name, sort_order=:sort_order, updated_by=:updated_by "
+        "WHERE code=:code AND kind='catalog' AND is_system=1"
+    )
+    async with engine.begin() as conn:
+        for seed in PERMISSION_SEEDS:
+            if seed.kind != "catalog" or seed.code not in mapping:
+                continue
+            await conn.execute(
+                update_sql,
+                {
+                    "code": seed.code,
+                    "name": seed.name,
+                    "sort_order": seed.sort_order,
+                    **audit_update_params(),
+                },
+            )
+
+
 async def sync_system_metadata(engine: AsyncEngine) -> None:
     """将系统种子的类型、路由、父子关系同步至 DB（不覆盖 name/enabled/sort_order）。"""
     mapping = await code_to_id(engine)
@@ -186,6 +213,7 @@ async def run_seed_sync(engine: AsyncEngine) -> list[str]:
         await insert_seed_batch(engine, tuple(new_seeds))
         logger.info("已同步新增权限: %s", ", ".join(s.code for s in new_seeds))
     await sync_system_metadata(engine)
+    await sync_catalog_defaults(engine)
     await sync_seed_bindings(engine)
     await sync_seed_api_routes(engine)
     return [s.code for s in new_seeds]

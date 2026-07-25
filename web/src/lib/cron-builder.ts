@@ -343,6 +343,18 @@ function describeField(field: CronFieldConfig, meta: CronFieldMeta): string | nu
   }
 }
 
+/** 识别「第 M 分、每 N 小时」类表达式，避免 custom 拼出「00；00；每 4 小时」。 */
+function describeEveryNHours(fields: CronCustomFields): string | null {
+  const { second, minute, hour, day, month, weekday } = fields;
+  const secondOk =
+    second.mode === "any" || (second.mode === "specific" && second.specific.length === 1 && second.specific[0] === 0);
+  const minuteOk = minute.mode === "any" || (minute.mode === "specific" && minute.specific.length === 1);
+  if (!secondOk || !minuteOk) return null;
+  if (hour.mode !== "step") return null;
+  if (day.mode !== "any" || month.mode !== "any" || weekday.mode !== "any") return null;
+  return `每 ${hour.step} 小时执行一次`;
+}
+
 export function describeCronExpr(expr: string, options?: { preferCustom?: boolean }): string {
   const config = parseCronExpr(expr, options);
   switch (config.mode) {
@@ -351,12 +363,14 @@ export function describeCronExpr(expr: string, options?: { preferCustom?: boolea
     case "every_n_minutes":
       return `每 ${config.everyNMinutes} 分钟执行一次`;
     case "hourly":
-      return `每小时第 ${config.hourlyMinute} 分钟执行`;
+      return config.hourlyMinute === 0 ? "每小时执行一次" : `每小时第 ${config.hourlyMinute} 分钟执行`;
     case "daily":
       return `每天 ${String(config.dailyHour).padStart(2, "0")}:${String(config.dailyMinute).padStart(2, "0")} 执行`;
     case "weekly":
       return `每周${WEEKDAY_LABELS[config.weeklyDay] ?? config.weeklyDay} ${String(config.weeklyHour).padStart(2, "0")}:${String(config.weeklyMinute).padStart(2, "0")} 执行`;
     case "custom": {
+      const everyNHours = describeEveryNHours(config.customFields);
+      if (everyNHours) return everyNHours;
       const parts = CRON_FIELD_META.map((meta) => describeField(config.customFields[meta.key], meta)).filter(
         (part): part is string => Boolean(part),
       );

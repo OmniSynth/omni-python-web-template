@@ -217,21 +217,23 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 | GET | `/{code}` | `system.scheduled_job.read` | 任务详情 |
 | PUT | `/{code}` | `system.scheduled_job.update` | 更新 cron（5/6 段）或启用状态 |
 | POST | `/{code}/trigger` | `system.scheduled_job.trigger` | 立即触发（`scope=tenant` 时 body 必填 `tenant_id`；202，文案「同步任务已开始执行」；并发中再触发仍返回相同成功文案） |
-| POST | `/{code}/start` | `system.scheduled_job.control` | 启动全局调度 |
+| POST | `/{code}/start` | `system.scheduled_job.control` | 启动全局调度；同时将该任务下各租户调度重新启用（`enable_all_tenant_schedules`） |
 | POST | `/{code}/stop` | `system.scheduled_job.control` | 停止；body 可选 `{ tenant_id }`：有则停止该租户调度，无则停止任务全局调度 |
 
-### 租户定时任务 `/api/v1/tenant/scheduled-jobs`（需当前租户上下文）
+### 租户定时任务 `/api/v1/tenant/scheduled-jobs`（需 `menu.tenant_scheduled_jobs`）
+
+租户设置页仅暴露 `scope=tenant` 任务的列表与手动执行，供临时刷新；无编辑 cron / 全局启停。
 
 | 方法 | 路径 | 权限码 | 说明 |
 |---|---|---|---|
-| GET | `/` | `tenant.scheduled_job.list` | 本租户可见的 `scope=tenant` 任务及本租户最近执行状态 |
-| POST | `/{code}/trigger` | `tenant.scheduled_job.trigger` | 对本租户手动触发（临时刷新；202，文案同上；并发去重） |
+| GET | `/` | `tenant.scheduled_job.list` | 本租户可见的 `scope=tenant` 任务（名称、说明、cron、任务状态=`全局启用∧本租户调度启用`、上次/下次执行、执行结果；前端执行计划仅展示可读文案） |
+| POST | `/{code}/trigger` | `tenant.scheduled_job.trigger` | 对本租户手动触发（临时刷新；全局或本租户调度已停止时 400；202，文案同上；并发去重） |
 
 内置任务由 `services/scheduled_job_registry.py` 注册；`scope`：`system` / `tenant`。配置在 `t_sys_scheduled_job`，租户调度启停在 `t_sys_scheduled_job_tenant`。
 
 - cron：5 段或 6 段（秒级）。
 - 内置 `tenant_expiry_check`：`scope=system`，默认 `*/5 * * * * *`。
-- 租户任务到点后按启用且未过期租户扇出；单租户可用 stop+`tenant_id` 停止其调度；手动触发不受「租户调度已停止」影响。
+- 租户任务到点后按启用且未过期租户扇出；单租户可用 stop+`tenant_id` 停止其调度；全局或本租户调度已停止时**拒绝**手动触发。
 - **过期租户**不可执行租户任务。
 
 ### 通用

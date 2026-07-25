@@ -16,7 +16,7 @@
 ```
 
 - **权限定义**：MySQL `t_sys_permissions` 表，全平台共享；支持运行时编辑名称、排序、显示、父子关系。
-- **种子同步**：[`auth/permission_seed.py`](../src/omni_api/auth/permission_seed.py) 由 `scripts/sync_rbac.py` 写入；仅 **INSERT** 新增 code，不覆盖管理员已改的 `name`、`sort_order`；新增项 `sort_order` 追加到同级末尾。
+- **种子同步**：[`auth/permission_seed.py`](../src/omni_api/auth/permission_seed.py) 由 `scripts/sync_rbac.py` 写入；仅 **INSERT** 新增 code；不覆盖管理员已改的菜单/按钮 `name`、`sort_order`；**目录**（`kind=catalog`）的名称与默认排序以种子为准并每次同步。新增非目录项 `sort_order` 追加到同级末尾。菜单 `api_codes` 变更后，脚本会按 `DEFAULT_ROLE_DEFS` **并集补齐**平台 `operator`/`viewer` 并下发到各租户同名角色；仅改种子后未跑同步时，旧角色仍缺新接口权限（表现为列表可进、详情 403）。
 - **平台系统角色**：`t_sys_roles` / `t_sys_role_permissions` / `t_sys_user_roles`；与租户无关，用户登录后权限与租户内角色**并集**生效。
 - **角色类型**（`t_sys_roles.role_type`）：`system`（平台用户绑定）或 `tenant`（可绑定到机构/租户作为预置模板）。新建/编辑机构、租户时仅可选 `tenant` 类型角色。
 - **租户角色**：`t_biz_roles_{tenant_id}`；绑定在 `t_biz_role_permissions_{tenant_id}.permission_code`。
@@ -103,8 +103,10 @@ Web 用户/角色/部门页按路由分流：`/users`、`/roles`、`/depts` 走�
 
 | 角色类型 | 可绑定目录 |
 |---|---|
-| 系统（`role_type=system`） | `catalog.system`（系统）、`catalog.platform`（平台管理） |
+| 系统（`role_type=system`） | `catalog.system`（系统配置）、`catalog.platform`（平台管理） |
 | 租户（`role_type=tenant`） | `catalog.tenant`（设置） |
+
+侧栏目录默认排序（种子 `sort_order`，`sync_rbac` 会同步目录名与排序）：**设置 → 系统配置 → 平台管理**。业务域若新增根目录，应插在「设置」之前或之间，并显式声明种子 `sort_order`（勿依赖插入时追加到末尾）。
 
 保存时 API 校验权限码所属根目录与角色类型一致，并继续拒绝跨域 `system.*` / `tenant.*` 前缀。
 

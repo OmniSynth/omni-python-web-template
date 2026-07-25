@@ -79,6 +79,9 @@ class ScheduledJobManager:
     async def list_tenant_jobs(self, tenant_id: int) -> list[TenantScheduledJobRecord]:
         return await self._repo().list_tenant_jobs(tenant_id)
 
+    async def is_tenant_schedule_enabled(self, code: str, tenant_id: int) -> bool:
+        return await self._repo().is_tenant_schedule_enabled(code, tenant_id)
+
     async def get_job(self, code: str) -> ScheduledJobRecord | None:
         job = await self._repo().get_by_code(code)
         if job is None:
@@ -100,7 +103,12 @@ class ScheduledJobManager:
         return updated.model_copy(update={"active": self.is_active(code)})
 
     async def start_job(self, code: str) -> ScheduledJobRecord | None:
-        return await self.update_job(code, ScheduledJobUpdate(enabled=True))
+        updated = await self.update_job(code, ScheduledJobUpdate(enabled=True))
+        if updated is None:
+            return None
+        if updated.scope == "tenant":
+            await self._repo().enable_all_tenant_schedules(code)
+        return updated
 
     async def stop_job(
         self, code: str, *, tenant_id: int | None = None

@@ -35,8 +35,14 @@ async def trigger_tenant_scheduled_job(
     if definition is None or definition.scope != "tenant":
         raise HTTPException(status_code=404, detail="定时任务不存在")
     tenant_id = current_tenant_id()
+    manager = ScheduledJobManager.get()
+    job = await manager.get_job(code)
+    if job is None or not job.enabled:
+        raise HTTPException(status_code=400, detail="任务已停止，无法手动执行")
+    if not await manager.is_tenant_schedule_enabled(code, tenant_id):
+        raise HTTPException(status_code=400, detail="任务已停止，无法手动执行")
     try:
-        await ScheduledJobManager.get().trigger_job(code, tenant_id=tenant_id)
+        await manager.trigger_job(code, tenant_id=tenant_id)
     except ValueError as exc:
         detail = str(exc)
         status = 404 if "不存在" in detail or "未知任务" in detail else 400

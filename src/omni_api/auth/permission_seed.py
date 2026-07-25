@@ -94,7 +94,8 @@ def _s(
 
 
 PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
-    _s("catalog.system", "系统", "catalog", sort_order=0),
+    # 侧栏根目录默认序：设置 → 系统配置 → 平台管理（sync_rbac 每次同步目录名与 sort_order）
+    _s("catalog.system", "系统配置", "catalog", sort_order=1),
     _s(
         "menu.users",
         "用户管理",
@@ -145,7 +146,7 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
         component_key="scheduled_jobs",
         api_codes=("system.scheduled_job.list",),
     ),
-    _s("catalog.platform", "平台管理", "catalog", sort_order=1),
+    _s("catalog.platform", "平台管理", "catalog", sort_order=2),
     _s(
         "menu.orgs",
         "机构管理",
@@ -187,7 +188,7 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
         parent="menu.tenants",
         sort_order=0,
     ),
-    _s("catalog.tenant", "设置", "catalog", sort_order=2),
+    _s("catalog.tenant", "设置", "catalog", sort_order=0),
     _s(
         "menu.tenant_users",
         "用户管理",

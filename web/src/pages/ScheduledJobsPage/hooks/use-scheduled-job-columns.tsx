@@ -72,7 +72,7 @@ export function useScheduledJobColumns({
       },
       {
         id: "active",
-        label: "调度中",
+        label: "任务状态",
         defaultWidth: 90,
         render: (job) => (
           <Badge variant={job.active ? "success" : "secondary"}>{job.active ? "运行中" : "已停止"}</Badge>

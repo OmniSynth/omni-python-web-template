@@ -62,16 +62,17 @@ class ScheduledJobRecord(BaseModel):
 
 
 class TenantScheduledJobRecord(BaseModel):
-    """租户设置页可见的租户范围任务（含本租户最近执行状态）。"""
+    """租户设置页可见的租户范围任务。"""
 
     code: str
     name: str
     description: str = ""
     scope: ScheduledJobScope = "tenant"
+    cron_expr: str = ""
     schedule_enabled: bool = True
     last_run_at: UtcDateTime | None = None
     last_run_status: ScheduledJobRunStatus | None = None
-    last_run_message: str = ""
+    next_run_at: UtcDateTime | None = None
 
 
 class ScheduledJobUpdate(BaseModel):

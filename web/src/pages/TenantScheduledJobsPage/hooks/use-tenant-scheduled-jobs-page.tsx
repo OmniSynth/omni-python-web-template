@@ -5,6 +5,7 @@ import { useTimezone } from "@/contexts/TimezoneContext";
 import { useClientTable } from "@/hooks/useClientTable";
 import { api } from "@/lib/api";
 import { TRIGGER_ACCEPTED_MSG } from "@/lib/api/scheduled-jobs";
+import { describeCronExpr } from "@/lib/cron-builder";
 import { showToastError, showToastSuccess } from "@/lib/form-feedback";
 import type { TenantScheduledJobRecord } from "@/types/scheduled-job";
 import { SCHEDULED_JOB_STATUS_LABELS } from "@/types/scheduled-job";
@@ -62,12 +63,18 @@ export function useTenantScheduledJobsPage() {
         render: (job) => job.description || "—",
       },
       {
+        id: "cron_expr",
+        label: "执行计划",
+        defaultWidth: 200,
+        render: (job) => (job.cron_expr ? describeCronExpr(job.cron_expr) : "—"),
+      },
+      {
         id: "schedule_enabled",
-        label: "调度状态",
+        label: "任务状态",
         defaultWidth: 100,
         render: (job) => (
           <Badge variant={job.schedule_enabled ? "success" : "secondary"}>
-            {job.schedule_enabled ? "可调度" : "已停止"}
+            {job.schedule_enabled ? "运行中" : "已停止"}
           </Badge>
         ),
       },
@@ -76,6 +83,12 @@ export function useTenantScheduledJobsPage() {
         label: "上次执行",
         defaultWidth: 170,
         render: (job) => (job.last_run_at ? formatDateTime(job.last_run_at) : "—"),
+      },
+      {
+        id: "next_run_at",
+        label: "下次执行",
+        defaultWidth: 170,
+        render: (job) => (job.next_run_at ? formatDateTime(job.next_run_at) : "—"),
       },
       {
         id: "last_run_status",
@@ -98,7 +111,7 @@ export function useTenantScheduledJobsPage() {
             id: "trigger",
             label: "执行",
             permission: "tenant.scheduled_job.trigger",
-            disabled: actionCode === job.code,
+            disabled: actionCode === job.code || !job.schedule_enabled,
             onClick: () => void handleTrigger(job),
           },
         ],

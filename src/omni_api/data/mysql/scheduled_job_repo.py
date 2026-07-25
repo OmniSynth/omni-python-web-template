@@ -279,28 +279,44 @@ class ScheduledJobRepo:
                 },
             )
 
+    async def enable_all_tenant_schedules(self, code: str) -> int:
+        """全局启动时恢复该任务下所有租户调度。"""
+        sql = text(
+            f"UPDATE {SYS_SCHEDULED_JOB_TENANT} SET enabled = 1, updated_by = :updated_by "
+            f"WHERE job_code = :code AND enabled = 0"
+        )
+        async with self._engine.begin() as conn:
+            result = await conn.execute(
+                sql, {"code": code, **audit_update_params()}
+            )
+        return int(result.rowcount or 0)
+
     async def list_tenant_jobs(self, tenant_id: int) -> list[TenantScheduledJobRecord]:
         jobs = await self.list_jobs(scope="tenant")
         result: list[TenantScheduledJobRecord] = []
         for job in jobs:
             state = await self._get_tenant_state(job.code, tenant_id)
+            tenant_enabled = True if state is None else bool(state["enabled"])
+            # 任务状态：全局调度启用且本租户未单独停止
+            effective_enabled = bool(job.enabled) and tenant_enabled
             result.append(
                 TenantScheduledJobRecord(
                     code=job.code,
                     name=job.name,
                     description=job.description,
                     scope="tenant",
-                    schedule_enabled=True if state is None else bool(state["enabled"]),
+                    cron_expr=job.cron_expr,
+                    schedule_enabled=effective_enabled,
                     last_run_at=None if state is None else state["last_run_at"],
                     last_run_status=None if state is None else state["last_run_status"],
-                    last_run_message="" if state is None else str(state["last_run_message"] or ""),
+                    next_run_at=job.next_run_at if effective_enabled else None,
                 )
             )
         return result
 
     async def _get_tenant_state(self, code: str, tenant_id: int) -> dict[str, Any] | None:
         sql = text(
-            f"SELECT enabled, last_run_at, last_run_status, last_run_message "
+            f"SELECT enabled, last_run_at, last_run_status "
             f"FROM {SYS_SCHEDULED_JOB_TENANT} "
             f"WHERE job_code = :code AND tenant_id = :tid LIMIT 1"
         )
@@ -312,7 +328,6 @@ class ScheduledJobRepo:
             "enabled": bool(row[0]),
             "last_run_at": row[1],
             "last_run_status": row[2],
-            "last_run_message": row[3],
         }
 
     async def _upsert_tenant_run(
