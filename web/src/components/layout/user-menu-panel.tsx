@@ -132,7 +132,8 @@ export function UserMenuPanel({
             </SelectContent>
           </Select>
         </div>
-        <div className="grid gap-1.5">
+        {/* 手机端侧栏固定左侧 Sheet，菜单位置仅桌面 lg+ 可配 */}
+        <div className="hidden gap-1.5 lg:grid">
           <Label htmlFor="user-menu-nav-position">菜单位置</Label>
           <Select
             value={navPosition}
