@@ -165,12 +165,14 @@ export function mountAuthPrism(container: HTMLElement, options: AuthPrismOptions
     height: "100%",
     display: "block",
   });
+  const lowPower = quality.perfTier === "low";
   const gl = canvas.getContext("webgl", {
     alpha: true,
     antialias: false,
     premultipliedAlpha: true,
-    powerPreference: "high-performance",
+    powerPreference: lowPower ? "low-power" : "high-performance",
     preserveDrawingBuffer: false,
+    desynchronized: true,
   });
   if (!gl) throw new Error("WebGL 不可用");
 
@@ -196,21 +198,53 @@ export function mountAuthPrism(container: HTMLElement, options: AuthPrismOptions
 
   const startedAt = performance.now();
   const frameInterval = 1000 / quality.maxFps;
-  let frame = 0;
-  let lastDrawAt = 0;
+  let raf = 0;
+  let timer = 0;
+  let loopActive = false;
   let visible = true;
   let pageVisible = document.visibilityState === "visible";
 
-  const draw = (now: number) => {
-    frame = requestAnimationFrame(draw);
-    if (!visible || !pageVisible) return;
-    if (now - lastDrawAt < frameInterval) return;
-    lastDrawAt = now;
+  const stopLoop = () => {
+    loopActive = false;
+    if (raf) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    }
+    if (timer) {
+      window.clearTimeout(timer);
+      timer = 0;
+    }
+  };
+
+  const paint = (now: number) => {
+    raf = 0;
+    if (!visible || !pageVisible) {
+      loopActive = false;
+      return;
+    }
     activateGlProgram(gl, program);
     gl.uniform1f(handles.locs.iTime, (now - startedAt) * 0.001);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    const spent = performance.now() - now;
+    timer = window.setTimeout(kick, Math.max(0, frameInterval - spent));
   };
-  frame = requestAnimationFrame(draw);
+
+  const kick = () => {
+    timer = 0;
+    if (!visible || !pageVisible) {
+      loopActive = false;
+      return;
+    }
+    raf = requestAnimationFrame(paint);
+  };
+
+  const ensureRunning = () => {
+    if (loopActive || !visible || !pageVisible) return;
+    loopActive = true;
+    kick();
+  };
+
+  ensureRunning();
 
   const ro = new ResizeObserver(() => {
     activateGlProgram(gl, program);
@@ -221,6 +255,8 @@ export function mountAuthPrism(container: HTMLElement, options: AuthPrismOptions
   const io = new IntersectionObserver(
     (entries) => {
       visible = entries.some((entry) => entry.isIntersecting && entry.intersectionRatio > 0.02);
+      if (visible) ensureRunning();
+      else stopLoop();
     },
     { threshold: [0, 0.02, 0.1] },
   );
@@ -228,11 +264,13 @@ export function mountAuthPrism(container: HTMLElement, options: AuthPrismOptions
 
   const onVisibility = () => {
     pageVisible = document.visibilityState === "visible";
+    if (pageVisible) ensureRunning();
+    else stopLoop();
   };
   document.addEventListener("visibilitychange", onVisibility);
 
   return () => {
-    cancelAnimationFrame(frame);
+    stopLoop();
     ro.disconnect();
     io.disconnect();
     document.removeEventListener("visibilitychange", onVisibility);

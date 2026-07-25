@@ -565,19 +565,36 @@
   }
 }
 
-/* Windows / 低性能档：减弱玻璃模糊，降低与 WebGL 叠层合成成本 */
+/* 低性能档：关掉毛玻璃/光斑模糊，避免与 WebGL 抢 GPU 导致指针飞跳 */
 html[data-prism-perf="low"] .auth-glass-panel,
 html[data-prism-perf="low"] .auth-glass-soft {
-  backdrop-filter: blur(8px) saturate(1.05);
-  -webkit-backdrop-filter: blur(8px) saturate(1.05);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background-color: color-mix(in srgb, var(--background) 92%, var(--card));
 }
 
 html[data-prism-perf="low"] .auth-page-shell {
   animation: none;
+  background-size: 100% 100%;
+}
+
+html[data-prism-perf="low"] .auth-page-shell__aurora {
+  display: none;
 }
 
 html[data-prism-perf="low"] .auth-page-shell__blob {
   animation: none;
+  filter: none;
+  will-change: auto;
+}
+
+html[data-prism-perf="low"] .auth-gradient-title,
+html[data-prism-perf="low"] .auth-gradient-title-glow {
+  animation: none;
+}
+
+html[data-prism-perf="low"] .auth-page-shell__prism canvas {
+  transform: translateZ(0);
 }
 
 html[data-prism-perf="balanced"] .auth-glass-panel,
