@@ -83,12 +83,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .then((next) => {
           const current = useAuthStore.getState().user;
           if (!current) return;
+          const sorted = (xs: string[] | undefined) => [...(xs ?? [])].sort().join("\0");
+          const permsChanged = sorted(current.permissions) !== sorted(next.permissions);
+          const rolesChanged = sorted(current.roles) !== sorted(next.roles);
           if (
             current.tenant_expired !== next.tenant_expired ||
             current.tenant_id !== next.tenant_id ||
-            current.need_tenant_select !== next.need_tenant_select
+            current.need_tenant_select !== next.need_tenant_select ||
+            permsChanged ||
+            rolesChanged
           ) {
             useAuthStore.setState({ user: { ...current, ...next } });
+            // 权限变更后重拉导航树（/me 已写回会话，refresh 会同步 nav）
+            if (permsChanged) {
+              void useAuthStore.getState().refresh();
+            }
           }
         })
         .catch(() => undefined);

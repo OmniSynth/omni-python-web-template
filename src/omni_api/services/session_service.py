@@ -271,14 +271,6 @@ class SessionService:
     def take_session_kick_reason(self, token: str) -> str | None:
         return self._store.take_kick_reason(token)
 
-    async def auth_user_from_token(self, token: str) -> AuthUser:
-        """从 Redis 会话读取当前用户，不触发 DB 权限全量同步（供页面刷新 fast path）。"""
-        session = await self.resolve(token)
-        if session is None:
-            reason = self.take_session_kick_reason(token)
-            raise AuthError(reason or "登录已失效，请重新登录")
-        return self._to_auth_user(session)
-
     async def logout(self, token: str) -> None:
         self._store.delete(token)
 

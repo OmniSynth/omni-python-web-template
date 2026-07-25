@@ -67,17 +67,17 @@ async function applyRemoteSession(
 ): Promise<void> {
   const remoteNavTree = normalizeNavTree(session.navTree);
   const { navTree: currentNavTree } = get();
-  const navChanged = remoteNavTree.length > 0 && !navTreesEqual(currentNavTree, remoteNavTree);
+  // 允许空树覆盖本地缓存（权限被全部收回时也须清空侧栏）
+  const navChanged = !navTreesEqual(currentNavTree, remoteNavTree);
   set({
     user: session.user,
     boundTenants: tenants,
     ...(navChanged ? { navTree: remoteNavTree } : {}),
   });
-  const navTreeToPersist = navChanged ? remoteNavTree : currentNavTree;
   if (navChanged) {
     writeDeviceNavTree(session.user.id, session.user.tenant_id, remoteNavTree);
   }
-  await writeSessionSnapshot(session.user, navTreeToPersist);
+  await writeSessionSnapshot(session.user, remoteNavTree);
   await get().syncTenantDisplayFromBoundTenants();
 }
 
@@ -215,8 +215,7 @@ export async function logoutAuthSession(get: AuthGet): Promise<void> {
 export async function switchTenantAuthSession(set: AuthSet, get: AuthGet, tenantId: number): Promise<void> {
   await api.auth.switchTenant(tenantId);
   const session = await loadRemoteSession();
-  const { navTree: currentNavTree } = get();
-  const nextNav = session.navTree.length > 0 ? normalizeNavTree(session.navTree) : normalizeNavTree(currentNavTree);
+  const nextNav = normalizeNavTree(session.navTree);
   set({
     user: session.user,
     navTree: nextNav,

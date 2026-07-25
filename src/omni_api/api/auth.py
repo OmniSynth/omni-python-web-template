@@ -119,12 +119,12 @@ async def logout(
 async def me(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> AuthUser:
-    """当前用户；读取 Redis 会话快照（权限在登录/切租户时刷新）。"""
+    """当前用户；从 DB 重载当前租户角色/权限并写回 Redis 会话。"""
     token = _token(credentials)
     if not token:
         raise HTTPException(status_code=401, detail="未登录")
     try:
-        return await SessionService().auth_user_from_token(token)
+        return await SessionService().refresh(token)
     except AuthError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
