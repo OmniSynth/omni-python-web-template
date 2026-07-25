@@ -11,12 +11,14 @@ export function Page({ children }: { children: ReactNode }) {
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
-    <header className="flex shrink-0 flex-col gap-2 border-b border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <h1 className="truncate text-xl font-normal tracking-tight text-primary">{title}</h1>
-        {subtitle ? <p className="mt-0.5 truncate text-sm text-muted-foreground">{subtitle}</p> : null}
+    <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-4">
+      <div className="min-w-0 flex-1">
+        <h1 className="truncate text-lg font-normal tracking-tight text-primary sm:text-xl">{title}</h1>
+        {subtitle ? (
+          <p className="mt-0.5 hidden truncate text-sm text-muted-foreground sm:block">{subtitle}</p>
+        ) : null}
       </div>
-      {action ? <PageHeaderActionsRow className="sm:w-auto">{action}</PageHeaderActionsRow> : null}
+      {action ? <PageHeaderActionsRow className="w-auto max-w-[55%] sm:max-w-none">{action}</PageHeaderActionsRow> : null}
     </header>
   );
 }

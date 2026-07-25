@@ -36,9 +36,11 @@ export function PageFilterToolbar({
 
   usePageFilterToolbarMobileSync(hiddenActiveCount, layout);
 
-  const toolbarActions = mobileActionsInHeader ? null : actions;
-  const toolbarCollapseButton = mobileActionsInHeader ? null : layout.collapseButton;
-  const toolbarShowActionBar = mobileActionsInHeader ? false : layout.showActionBar;
+  // 仅手机端把展开/操作挪到页头；桌面端必须留在工具栏，否则折叠字段无法展开。
+  const hoistToHeader = layout.mobileActionsInHeader;
+  const toolbarActions = hoistToHeader ? null : actions;
+  const toolbarCollapseButton = hoistToHeader ? null : layout.collapseButton;
+  const toolbarShowActionBar = hoistToHeader ? false : layout.showActionBar;
 
   const actionBarStyle = layout.desktopActionGrid
     ? {
