@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
-import { api } from "@/lib/api";
 import { errorMessage, showToastError, showToastSuccess } from "@/lib/form-feedback";
-import type { DevParamGroupDetail, DevParamGroupSummary } from "@/types/dev-param";
+import { normalizeOssDomain, validateOssDomain } from "@/lib/oss-domain";
+import type { DevParamGroupDetail, DevParamGroupSummary, DevParamsClient } from "@/types/dev-param";
 import type { DevParamDraft } from "../components/dev-param-group-edit-sheet";
 
 function toParamDrafts(detail: DevParamGroupDetail): DevParamDraft[] {
@@ -12,12 +12,16 @@ function toParamDrafts(detail: DevParamGroupDetail): DevParamDraft[] {
     remark: item.remark,
     label: item.label,
     description: item.description,
+    placeholder: item.placeholder,
     field_type: item.field_type,
     editable: item.editable,
+    configured: item.configured,
+    select_options: item.select_options,
   }));
 }
 
 type DevParamsPageActionsOptions = {
+  client: DevParamsClient;
   load: () => Promise<void>;
   editingDetail: DevParamGroupDetail | null;
   groupName: string;
@@ -34,6 +38,7 @@ type DevParamsPageActionsOptions = {
 };
 
 export function useDevParamsPageActions({
+  client,
   load,
   editingDetail,
   groupName,
@@ -51,7 +56,7 @@ export function useDevParamsPageActions({
   const openGroupEdit = useCallback(
     async (group: DevParamGroupSummary) => {
       try {
-        const data = await api.devParams.getGroup(group.id);
+        const data = await client.getGroup(group.id);
         setEditingDetail(data);
         setGroupName(data.name);
         setGroupDescription(data.description);
@@ -61,20 +66,20 @@ export function useDevParamsPageActions({
         showToastError(errorMessage(err, "加载分组失败"));
       }
     },
-    [setEditingDetail, setGroupDescription, setGroupEditOpen, setGroupName, setParamDrafts],
+    [client, setEditingDetail, setGroupDescription, setGroupEditOpen, setGroupName, setParamDrafts],
   );
 
   const openDetail = useCallback(
     async (group: DevParamGroupSummary) => {
       try {
-        const data = await api.devParams.getGroup(group.id);
+        const data = await client.getGroup(group.id);
         setDetail(data);
         setDetailOpen(true);
       } catch (err) {
         showToastError(errorMessage(err, "加载详情失败"));
       }
     },
-    [setDetail, setDetailOpen],
+    [client, setDetail, setDetailOpen],
   );
 
   const updateParamDraft = useCallback(
@@ -94,7 +99,7 @@ export function useDevParamsPageActions({
     try {
       const groupChanged = groupName.trim() !== editingDetail.name || groupDescription !== editingDetail.description;
       if (groupChanged) {
-        await api.devParams.updateGroup(editingDetail.id, {
+        await client.updateGroup(editingDetail.id, {
           name: groupName.trim(),
           description: groupDescription,
         });
@@ -103,12 +108,21 @@ export function useDevParamsPageActions({
       const originalByKey = new Map(editingDetail.params.map((item) => [item.param_key, item]));
       for (const draft of paramDrafts) {
         const original = originalByKey.get(draft.param_key);
-        if (!original?.editable) continue;
-        const valueChanged = draft.param_value !== original.param_value;
+        if (!original?.editable || draft.field_type === "readonly") continue;
+        let paramValue = draft.param_value;
+        if (draft.param_key === "oss.domain") {
+          const domainError = validateOssDomain(paramValue);
+          if (domainError) {
+            showToastError(domainError);
+            return;
+          }
+          paramValue = normalizeOssDomain(paramValue);
+        }
+        const valueChanged = paramValue !== original.param_value;
         const remarkChanged = draft.remark !== original.remark;
         if (!valueChanged && !remarkChanged) continue;
-        await api.devParams.update(draft.param_key, {
-          param_value: draft.param_value,
+        await client.update(draft.param_key, {
+          param_value: paramValue,
           remark: draft.remark,
         });
       }
@@ -124,6 +138,7 @@ export function useDevParamsPageActions({
       setGroupSaving(false);
     }
   }, [
+    client,
     editingDetail,
     groupDescription,
     groupName,

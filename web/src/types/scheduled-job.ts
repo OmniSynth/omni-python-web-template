@@ -1,6 +1,8 @@
-export type ScheduledJobRunStatus = "success" | "failure" | "running";
+export type ScheduledJobRunStatus = "success" | "failure" | "running" | "partial" | "skipped";
 
 export type ScheduledJobScope = "system" | "tenant";
+
+export type ScheduledJobTriggerType = "cron" | "manual";
 
 export type ScheduledJobRecord = {
   id: number;
@@ -37,6 +39,41 @@ export const SCHEDULED_JOB_STATUS_LABELS: Record<string, string> = {
   success: "成功",
   failure: "失败",
   running: "执行中",
+  partial: "部分成功",
+  skipped: "已跳过",
+};
+
+export const SCHEDULED_JOB_TRIGGER_LABELS: Record<ScheduledJobTriggerType, string> = {
+  cron: "定时",
+  manual: "手动",
+};
+
+export type ScheduledJobRunRecord = {
+  id: number;
+  run_id: string;
+  job_code: string;
+  scope: ScheduledJobScope;
+  tenant_id: number | null;
+  trigger_type: ScheduledJobTriggerType;
+  actor_user_id: number | null;
+  actor_username: string | null;
+  trigger_request_id: string | null;
+  params_json: Record<string, unknown> | null;
+  context_json: Record<string, unknown> | null;
+  status: ScheduledJobRunStatus;
+  summary: string;
+  result_json: Record<string, unknown> | null;
+  error_text: string | null;
+  started_at: string;
+  finished_at: string | null;
+  duration_ms: number | null;
+};
+
+export type PaginatedScheduledJobRuns = {
+  items: ScheduledJobRunRecord[];
+  total: number;
+  page: number;
+  page_size: number;
 };
 
 export const SCHEDULED_JOB_SCOPE_LABELS: Record<ScheduledJobScope, string> = {

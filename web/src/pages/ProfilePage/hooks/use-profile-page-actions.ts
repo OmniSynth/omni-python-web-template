@@ -6,6 +6,7 @@ import type { UserProfile } from "@/types/auth";
 export function useProfilePageActions({
   displayName,
   avatarUrl,
+  setAvatarUrl,
   oldPassword,
   newPassword,
   confirmPassword,
@@ -15,6 +16,7 @@ export function useProfilePageActions({
   setFieldErrors,
   setProfile,
   setSavingProfile,
+  setUploadingAvatar,
   setSavingPassword,
   setSavingIdentity,
   setOldPassword,
@@ -25,6 +27,7 @@ export function useProfilePageActions({
 }: {
   displayName: string;
   avatarUrl: string;
+  setAvatarUrl: Dispatch<SetStateAction<string>>;
   oldPassword: string;
   newPassword: string;
   confirmPassword: string;
@@ -34,6 +37,7 @@ export function useProfilePageActions({
   setFieldErrors: (errors: Record<string, string>) => void;
   setProfile: Dispatch<SetStateAction<UserProfile | null>>;
   setSavingProfile: Dispatch<SetStateAction<boolean>>;
+  setUploadingAvatar: Dispatch<SetStateAction<boolean>>;
   setSavingPassword: Dispatch<SetStateAction<boolean>>;
   setSavingIdentity: Dispatch<SetStateAction<boolean>>;
   setOldPassword: Dispatch<SetStateAction<string>>;
@@ -54,15 +58,35 @@ export function useProfilePageActions({
     try {
       const updated = await api.profile.update({
         display_name: displayName.trim(),
-        avatar_url: avatarUrl.trim() || null,
       });
       setProfile(updated);
+      setAvatarUrl(updated.avatar_url ?? avatarUrl);
       await refreshAuth();
       showToastSuccess("资料已保存");
     } catch (err) {
       showToastError(errorMessage(err, "保存失败"));
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  async function handleUploadAvatar(file: File) {
+    clearFieldErrors();
+    if (file.size > 2 * 1024 * 1024) {
+      setFieldErrors({ avatarUrl: "头像文件不能超过 2MB" });
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const updated = await api.profile.uploadAvatar(file);
+      setProfile(updated);
+      setAvatarUrl(updated.avatar_url ?? "");
+      await refreshAuth();
+      showToastSuccess("头像已更新");
+    } catch (err) {
+      showToastError(errorMessage(err, "头像上传失败"));
+    } finally {
+      setUploadingAvatar(false);
     }
   }
 
@@ -116,5 +140,5 @@ export function useProfilePageActions({
     }
   }
 
-  return { handleSaveProfile, handleChangePassword, handleVerifyIdentity };
+  return { handleSaveProfile, handleUploadAvatar, handleChangePassword, handleVerifyIdentity };
 }

@@ -7,7 +7,10 @@ import { TableHeaderButton } from "@/components/table/table-header-button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { AuditLevel, SqlSeverity, SqlTier } from "@/types/audit";
+import type { ScheduledJobRunStatus, ScheduledJobTriggerType } from "@/types/scheduled-job";
 import {
+  AUDIT_JOB_STATUS_SELECT_OPTIONS,
+  AUDIT_JOB_TRIGGER_SELECT_OPTIONS,
   AUDIT_LEVEL_SELECT_OPTIONS,
   AUDIT_SEVERITY_SELECT_OPTIONS,
   AUDIT_TIER_SELECT_OPTIONS,
@@ -21,6 +24,8 @@ type AuditFilterToolbarProps = {
   level: AuditLevel | "";
   tier: SqlTier | "";
   severity: SqlSeverity | "";
+  jobStatus: ScheduledJobRunStatus | "";
+  jobTrigger: ScheduledJobTriggerType | "";
   requestId: string;
   hiddenFilterActiveCount: number;
   exporting: boolean;
@@ -29,6 +34,8 @@ type AuditFilterToolbarProps = {
   onLevelChange: (value: AuditLevel | "") => void;
   onTierChange: (value: SqlTier | "") => void;
   onSeverityChange: (value: SqlSeverity | "") => void;
+  onJobStatusChange: (value: ScheduledJobRunStatus | "") => void;
+  onJobTriggerChange: (value: ScheduledJobTriggerType | "") => void;
   onRequestIdChange: (value: string) => void;
   onExport: () => void;
 };
@@ -48,6 +55,12 @@ function AuditExportToolbarButton({ exporting, onExport }: { exporting: boolean;
   );
 }
 
+function keywordPlaceholder(tab: Tab): string {
+  if (tab === "slow-sql") return "SQL、路径、用户名";
+  if (tab === "job-runs") return "任务编码、摘要、Run ID、操作人";
+  return "路径、用户名、摘要";
+}
+
 export function AuditFilterToolbar({
   tab,
   dateRange,
@@ -55,6 +68,8 @@ export function AuditFilterToolbar({
   level,
   tier,
   severity,
+  jobStatus,
+  jobTrigger,
   requestId,
   hiddenFilterActiveCount,
   exporting,
@@ -63,6 +78,8 @@ export function AuditFilterToolbar({
   onLevelChange,
   onTierChange,
   onSeverityChange,
+  onJobStatusChange,
+  onJobTriggerChange,
   onRequestIdChange,
   onExport,
 }: AuditFilterToolbarProps) {
@@ -70,7 +87,7 @@ export function AuditFilterToolbar({
     <PageFilterToolbar
       key={tab}
       hiddenActiveCount={hiddenFilterActiveCount}
-      actions={<AuditExportToolbarButton exporting={exporting} onExport={onExport} />}
+      actions={tab === "job-runs" ? undefined : <AuditExportToolbarButton exporting={exporting} onExport={onExport} />}
     >
       <DateRangeFilterField value={dateRange} onChange={onDateRangeChange} />
       <FilterField label="关键词" htmlFor="audit-keyword">
@@ -83,11 +100,37 @@ export function AuditFilterToolbar({
             id="audit-keyword"
             value={keyword}
             onChange={(e) => onKeywordChange(e.target.value)}
-            placeholder={tab === "slow-sql" ? "SQL、路径、用户名" : "路径、用户名、摘要"}
+            placeholder={keywordPlaceholder(tab)}
           />
         </FilterClearableControl>
       </FilterField>
-      {tab === "slow-sql" ? (
+      {tab === "job-runs" ? (
+        <FilterField label="状态" htmlFor="audit-job-status">
+          <Select
+            value={jobStatus || "all"}
+            options={[...AUDIT_JOB_STATUS_SELECT_OPTIONS]}
+            onValueChange={(value) => onJobStatusChange(value === "all" ? "" : (value as ScheduledJobRunStatus))}
+          >
+            <FilterClearableControl
+              variant="select"
+              clearVisible={jobStatus !== ""}
+              clearLabel="清空状态"
+              onClear={() => onJobStatusChange("")}
+            >
+              <SelectTrigger id="audit-job-status" className="w-full">
+                <SelectValue placeholder="全部" />
+              </SelectTrigger>
+            </FilterClearableControl>
+            <SelectContent>
+              {AUDIT_JOB_STATUS_SELECT_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterField>
+      ) : tab === "slow-sql" ? (
         <FilterField label="Tier" htmlFor="audit-tier">
           <Select
             value={tier || "all"}
@@ -138,6 +181,33 @@ export function AuditFilterToolbar({
           </Select>
         </FilterField>
       )}
+      {tab === "job-runs" ? (
+        <FilterField label="触发方式" htmlFor="audit-job-trigger">
+          <Select
+            value={jobTrigger || "all"}
+            options={[...AUDIT_JOB_TRIGGER_SELECT_OPTIONS]}
+            onValueChange={(value) => onJobTriggerChange(value === "all" ? "" : (value as ScheduledJobTriggerType))}
+          >
+            <FilterClearableControl
+              variant="select"
+              clearVisible={jobTrigger !== ""}
+              clearLabel="清空触发方式"
+              onClear={() => onJobTriggerChange("")}
+            >
+              <SelectTrigger id="audit-job-trigger" className="w-full">
+                <SelectValue placeholder="全部" />
+              </SelectTrigger>
+            </FilterClearableControl>
+            <SelectContent>
+              {AUDIT_JOB_TRIGGER_SELECT_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterField>
+      ) : null}
       {tab === "slow-sql" ? (
         <FilterField label="严重度" htmlFor="audit-severity">
           <Select

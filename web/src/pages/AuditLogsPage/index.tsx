@@ -67,6 +67,7 @@ export function AuditLogsPage() {
           requestDetail={page.requestDetail}
           operationDetail={page.operationDetail}
           slowSqlDetail={page.slowSqlDetail}
+          jobRunDetail={page.jobRunDetail}
         />
 
         <TableColumnSettingsSheet

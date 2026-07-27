@@ -81,7 +81,7 @@
 ```
 L1 main.py、api/、web/ → 路由与 HTTP 适配
 L2 services/ → 用例编排
-L3 auth/、audit/… → 领域逻辑；禁止直接拼 SQL/Redis
+L3 auth/、audit/、storage/… → 领域逻辑；禁止直接拼 SQL/Redis
 L4 data/mysql|redis/ → 仓储封装
 L5 config/、schemas/ → 类型与配置；无 IO
 ```
@@ -184,12 +184,13 @@ MySQL 列细节见下文「MySQL 表结构」§时间。
 
 编辑 `*.py` / `*.sql` 中的 DDL 时遵守：
 
-## 列注释
+## 注释（列与表）
 
 - `CREATE TABLE` 每个业务列须 `COMMENT '…'`，简洁准确；禁止无注释列。
+- 表级须在末尾括号后写 `COMMENT='…'`（经 `ddl_comment.table_cmt()`），标明表职责/中文名；禁止无表注释。
 - 枚举/状态列注释须列出合法取值（如 `数据权限：1仅本人 2本部门 …`）。
-- 复用 `data/mysql/ddl_comments.py` 常量；审计列见同文件 `AUDIT_COLUMN_DEFS`。
-- 提交前：`uv run scripts/check_python.py` 会校验 `*_sql.py` 等 DDL 文件。
+- 复用 `data/mysql/ddl_comment.py` 常量；审计列见同文件 `AUDIT_COLUMN_DEFS`。
+- 提交前：`uv run scripts/check_python.py` 会校验 DDL 中的表级 `COMMENT`。
 - 注释随 `CREATE TABLE` 写入；新库以 DDL 为准，不做运行时 COMMENT 同步。
 
 ## 审计字段（业务表必选）
@@ -205,7 +206,7 @@ MySQL 列细节见下文「MySQL 表结构」§时间。
 | `updated_by` | `BIGINT NULL` → `t_sys_user.id` |
 
 - 自然键可 `UNIQUE`，不得替代 `id`。
-- 复用 `data/mysql/ddl_comments.py` 的 `AUDIT_COLUMN_DEFS`（经 `audit.py` re-export）。
+- 复用 `data/mysql/ddl_comment.py` 的 `AUDIT_COLUMN_DEFS`（经 `audit.py` re-export）。
 
 ## 时间
 

@@ -11,7 +11,7 @@ from omni_api.data.mysql.biz_table import (
     SYS_PERMISSION_API_ROUTES,
     SYS_PERMISSIONS,
 )
-from omni_api.data.mysql.ddl_comment import ENABLED_FLAG, ID_PK, PERMISSION_KIND_ENUM, cmt
+from omni_api.data.mysql.ddl_comment import ENABLED_FLAG, ID_PK, PERMISSION_KIND_ENUM, cmt, table_cmt
 from omni_api.schemas.rbac import PermissionRecord
 
 CREATE_PERMISSIONS_SQL = f"""
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS {SYS_PERMISSIONS} (
     {AUDIT_COLUMN_DEFS.strip()},
     INDEX idx_parent_sort (parent_id, sort_order),
     FOREIGN KEY (parent_id) REFERENCES {SYS_PERMISSIONS}(id) ON DELETE RESTRICT
-);
+){table_cmt("权限")};
 
 CREATE TABLE IF NOT EXISTS {SYS_PERMISSION_API_BINDINGS} (
     id BIGINT AUTO_INCREMENT PRIMARY KEY{ID_PK},
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS {SYS_PERMISSION_API_BINDINGS} (
     UNIQUE KEY uq_perm_api (permission_id, api_permission_id),
     FOREIGN KEY (permission_id) REFERENCES {SYS_PERMISSIONS}(id) ON DELETE CASCADE,
     FOREIGN KEY (api_permission_id) REFERENCES {SYS_PERMISSIONS}(id) ON DELETE CASCADE
-);
+){table_cmt("权限API绑定")};
 
 CREATE TABLE IF NOT EXISTS {SYS_PERMISSION_API_ROUTES} (
     id BIGINT AUTO_INCREMENT PRIMARY KEY{ID_PK},
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS {SYS_PERMISSION_API_ROUTES} (
     {AUDIT_COLUMN_DEFS.strip()},
     UNIQUE KEY uq_perm_route (permission_id, api_method, api_path_pattern),
     FOREIGN KEY (permission_id) REFERENCES {SYS_PERMISSIONS}(id) ON DELETE CASCADE
-);
+){table_cmt("权限API路由")};
 """
 
 PERMISSION_SELECT = f"""

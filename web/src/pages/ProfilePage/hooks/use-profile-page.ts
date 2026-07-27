@@ -15,6 +15,7 @@ export function useProfilePage() {
   const [displayName, setDisplayName] = useState(() => user?.display_name ?? "");
   const [avatarUrl, setAvatarUrl] = useState(() => user?.avatar_url ?? "");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -38,9 +39,10 @@ export function useProfilePage() {
 
   const username = profile?.username ?? user?.username ?? "";
 
-  const { handleSaveProfile, handleChangePassword, handleVerifyIdentity } = useProfilePageActions({
+  const { handleSaveProfile, handleUploadAvatar, handleChangePassword, handleVerifyIdentity } = useProfilePageActions({
     displayName,
     avatarUrl,
+    setAvatarUrl,
     oldPassword,
     newPassword,
     confirmPassword,
@@ -50,6 +52,7 @@ export function useProfilePage() {
     setFieldErrors,
     setProfile,
     setSavingProfile,
+    setUploadingAvatar,
     setSavingPassword,
     setSavingIdentity,
     setOldPassword,
@@ -66,7 +69,7 @@ export function useProfilePage() {
     displayName,
     setDisplayName,
     avatarUrl,
-    setAvatarUrl,
+    uploadingAvatar,
     savingProfile,
     oldPassword,
     setOldPassword,
@@ -84,6 +87,7 @@ export function useProfilePage() {
     clearFieldError,
     formatDateTime,
     handleSaveProfile,
+    handleUploadAvatar,
     handleChangePassword,
     handleVerifyIdentity,
   };

@@ -16,6 +16,7 @@ from omni_api.schemas.dev_param import (
 )
 from omni_api.services.audit_service import AuditService
 from omni_api.services.dev_param_service import DevParamService
+from omni_api.services.dev_param_view import redact_param_for_audit
 
 router = APIRouter(
     prefix="/api/v1/dev-params",
@@ -92,8 +93,8 @@ async def update_param(
         actor_username=actor.username,
         resource_type="dev_param",
         resource_id=param_key,
-        before=before.model_dump() if before else None,
-        after=after,
+        before=redact_param_for_audit(param_key, before),
+        after=redact_param_for_audit(param_key, after),
         name=param_key,
     )
     return after

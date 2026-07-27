@@ -7,10 +7,14 @@ export function useDevParamColumns({
   formatDateTime,
   onEdit,
   onDetail,
+  updatePermission = "dev_param.update",
+  listPermission = "dev_param.list",
 }: {
   formatDateTime: (value: string) => string;
   onEdit: (group: DevParamGroupSummary) => void;
   onDetail: (group: DevParamGroupSummary) => void;
+  updatePermission?: string;
+  listPermission?: string;
 }) {
   return useMemo<TableColumnDef<DevParamGroupSummary>[]>(
     () => [
@@ -61,11 +65,11 @@ export function useDevParamColumns({
           { id: "detail", label: "详情" },
         ],
         renderItems: (g) => [
-          { id: "edit", label: "编辑", permission: "dev_param.update", onClick: () => onEdit(g) },
-          { id: "detail", label: "详情", permission: "dev_param.list", onClick: () => onDetail(g) },
+          { id: "edit", label: "编辑", permission: updatePermission, onClick: () => onEdit(g) },
+          { id: "detail", label: "详情", permission: listPermission, onClick: () => onDetail(g) },
         ],
       }),
     ],
-    [formatDateTime, onEdit, onDetail],
+    [formatDateTime, listPermission, onDetail, onEdit, updatePermission],
   );
 }

@@ -13,7 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from omni_api.data.mysql.biz_table import SYS_AUDIT_SLOW_SQL_LOGS
-from omni_api.data.mysql.ddl_comment import AUDIT_LEVEL_ENUM, ID_PK, cmt
+from omni_api.data.mysql.ddl_comment import AUDIT_LEVEL_ENUM, ID_PK, cmt, table_cmt
 from omni_api.data.mysql.ddl_exec import execute_create_table_if_missing
 from omni_api.data.mysql.list_sort import build_order_clause
 from omni_api.data.mysql.sql_audit_listener import bump_sql_audit_depth, reset_sql_audit_depth
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS {SYS_AUDIT_SLOW_SQL_LOGS} (
     KEY idx_slow_sql_request (request_id),
     KEY idx_slow_sql_fingerprint (sql_fingerprint),
     KEY idx_slow_sql_duration (duration_ms)
-);
+){table_cmt("慢SQL审计日志")};
 """
 
 _SLOW_SQL_SELECT = f"""

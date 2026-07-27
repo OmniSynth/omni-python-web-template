@@ -6,7 +6,9 @@ import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from "@/compo
 import { copyToClipboard } from "@/lib/clipboard";
 import { showToastError, showToastSuccess } from "@/lib/form-feedback";
 import type { OperationLogRecord, RequestLogRecord, SlowSqlLogRecord } from "@/types/audit";
+import type { ScheduledJobRunRecord } from "@/types/scheduled-job";
 import { SEVERITY_LABEL, TIER_LABEL } from "../types";
+import { JobRunDetail } from "./job-run-detail";
 import { JsonBlock } from "./json-block";
 
 const ExplainPlanBlock = lazy(() =>
@@ -22,7 +24,21 @@ type AuditDetailSheetProps = {
   requestDetail: RequestLogRecord | null;
   operationDetail: OperationLogRecord | null;
   slowSqlDetail: SlowSqlLogRecord | null;
+  jobRunDetail: ScheduledJobRunRecord | null;
 };
+
+function detailTitle(
+  requestDetail: RequestLogRecord | null,
+  operationDetail: OperationLogRecord | null,
+  slowSqlDetail: SlowSqlLogRecord | null,
+  jobRunDetail: ScheduledJobRunRecord | null,
+): string {
+  if (requestDetail) return "请求日志详情";
+  if (operationDetail) return "操作日志详情";
+  if (jobRunDetail) return "任务执行详情";
+  if (slowSqlDetail) return "慢 SQL 详情";
+  return "详情";
+}
 
 async function copySqlText(text: string, source: HTMLTextAreaElement | null) {
   if (!text) return;
@@ -42,6 +58,7 @@ export function AuditDetailSheet({
   requestDetail,
   operationDetail,
   slowSqlDetail,
+  jobRunDetail,
 }: AuditDetailSheetProps) {
   const sqlCopyRef = useRef<HTMLTextAreaElement>(null);
 
@@ -52,7 +69,7 @@ export function AuditDetailSheet({
         className={slowSqlDetail ? "p-0 sm:max-w-[min(96vw,72rem)] xl:max-w-[min(84vw,80rem)]" : "p-0 sm:max-w-xl"}
       >
         <SheetHeader>
-          <SheetTitle>{requestDetail ? "请求日志详情" : operationDetail ? "操作日志详情" : "慢 SQL 详情"}</SheetTitle>
+          <SheetTitle>{detailTitle(requestDetail, operationDetail, slowSqlDetail, jobRunDetail)}</SheetTitle>
         </SheetHeader>
         <SheetBody>
           {requestDetail ? (
@@ -194,6 +211,7 @@ export function AuditDetailSheet({
               </Suspense>
             </div>
           ) : null}
+          {jobRunDetail ? <JobRunDetail detail={jobRunDetail} formatDateTime={formatDateTime} /> : null}
         </SheetBody>
       </SheetContent>
     </Sheet>

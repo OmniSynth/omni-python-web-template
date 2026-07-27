@@ -1,4 +1,5 @@
 import { Page, PageBody, PageHeader, PageMessage, TablePagination } from "@/components/layout/AppShell";
+import { ScheduledJobRunsSheet } from "@/components/scheduled-job-runs";
 import { ConfigurableTable } from "@/components/table/ConfigurableTable";
 import { TableColumnSettingsSheet } from "@/components/table/TableColumnSettingsSheet";
 import { TableSettingsButton } from "@/components/table/TableSettingsButton";
@@ -89,6 +90,15 @@ export function ScheduledJobsPage() {
         confirmLabel={isStopMode ? "停止该租户" : "确认执行"}
         onConfirm={(tenantId) => void page.handleConfirmTenantSheet(tenantId)}
         onConfirmGlobal={isStopMode ? () => void page.handleConfirmGlobalStop() : undefined}
+      />
+
+      <ScheduledJobRunsSheet
+        open={page.historyOpen}
+        onOpenChange={page.setHistoryOpen}
+        jobCode={page.historyJob?.code ?? null}
+        jobName={page.historyJob?.name}
+        scope="platform"
+        showTenantId={page.historyJob?.scope === "tenant"}
       />
 
       <TableColumnSettingsSheet

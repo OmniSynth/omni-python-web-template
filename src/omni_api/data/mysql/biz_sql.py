@@ -10,6 +10,7 @@ from omni_api.data.mysql.ddl_comment import (
     ID_PK,
     SCOPE_TYPE_ENUM,
     cmt,
+    table_cmt,
 )
 
 
@@ -24,7 +25,7 @@ CREATE TABLE IF NOT EXISTS {t} (
     enabled TINYINT NOT NULL DEFAULT 1{ENABLED_FLAG},
     {AUDIT_COLUMN_DEFS.strip()},
     KEY idx_dept_parent (parent_id)
-);
+){table_cmt("部门")};
 """
 
 
@@ -40,7 +41,7 @@ CREATE TABLE IF NOT EXISTS {t} (
     system_managed TINYINT NOT NULL DEFAULT 0{cmt("系统预置角色 0否 1是")},
     {AUDIT_COLUMN_DEFS.strip()},
     UNIQUE KEY uq_role_code (code)
-);
+){table_cmt("角色")};
 """
 
 
@@ -55,7 +56,7 @@ CREATE TABLE IF NOT EXISTS {t} (
     {AUDIT_COLUMN_DEFS.strip()},
     UNIQUE KEY uq_role_permission (role_id, permission_code),
     FOREIGN KEY (role_id) REFERENCES {roles}(id) ON DELETE CASCADE
-);
+){table_cmt("角色权限")};
 """
 
 
@@ -71,7 +72,7 @@ CREATE TABLE IF NOT EXISTS {t} (
     UNIQUE KEY uq_user_role (user_id, role_id),
     FOREIGN KEY (user_id) REFERENCES {SYS_USER}(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES {roles}(id) ON DELETE CASCADE
-);
+){table_cmt("用户角色")};
 """
 
 
@@ -87,7 +88,7 @@ CREATE TABLE IF NOT EXISTS {t} (
     {AUDIT_COLUMN_DEFS.strip()},
     UNIQUE KEY uq_role_scope (role_id, scope_type, scope_id),
     FOREIGN KEY (role_id) REFERENCES {roles}(id) ON DELETE CASCADE
-);
+){table_cmt("角色数据权限")};
 """
 
 
@@ -102,7 +103,7 @@ CREATE TABLE IF NOT EXISTS {t} (
     {AUDIT_COLUMN_DEFS.strip()},
     UNIQUE KEY uq_user_scope (user_id, scope_type, scope_id),
     FOREIGN KEY (user_id) REFERENCES {SYS_USER}(id) ON DELETE CASCADE
-);
+){table_cmt("用户数据权限")};
 """
 
 
@@ -115,7 +116,7 @@ CREATE TABLE IF NOT EXISTS {t} (
     description VARCHAR(300) NOT NULL DEFAULT ''{cmt("分组描述")},
     {AUDIT_COLUMN_DEFS.strip()},
     UNIQUE KEY uq_dev_param_group_name (name)
-);
+){table_cmt("开发参数分组")};
 """
 
 
@@ -133,7 +134,7 @@ CREATE TABLE IF NOT EXISTS {t} (
     UNIQUE KEY uq_dev_param_key (param_key),
     KEY idx_dev_param_group (group_id),
     FOREIGN KEY (group_id) REFERENCES {group_t}(id)
-);
+){table_cmt("开发参数")};
 """
 
 

@@ -22,6 +22,7 @@ const TenantScheduledJobsPage = lazyNamedPage(
 const DeptsPage = lazyNamedPage(() => import("@/pages/DeptsPage"), "DeptsPage");
 const ProfilePage = lazyNamedPage(() => import("@/pages/ProfilePage"), "ProfilePage");
 const DevParamsPage = lazyNamedPage(() => import("@/pages/DevParamsPage"), "DevParamsPage");
+const SysDevParamsPage = lazyNamedPage(() => import("@/pages/SysDevParamsPage"), "SysDevParamsPage");
 
 /** 菜单 component_key → 页面组件（新增页面须在此注册）。 */
 export const PAGE_REGISTRY: Record<string, LazyExoticComponent<ComponentType>> = {
@@ -36,6 +37,7 @@ export const PAGE_REGISTRY: Record<string, LazyExoticComponent<ComponentType>> =
   depts: DeptsPage,
   profile: ProfilePage,
   dev_params: DevParamsPage,
+  sys_dev_params: SysDevParamsPage,
 };
 
 export function pageComponent(key: string | null | undefined): LazyExoticComponent<ComponentType> | undefined {
@@ -55,6 +57,7 @@ const PAGE_IMPORTERS: Partial<Record<string, () => Promise<unknown>>> = {
   depts: () => import("@/pages/DeptsPage"),
   profile: () => import("@/pages/ProfilePage"),
   dev_params: () => import("@/pages/DevParamsPage"),
+  sys_dev_params: () => import("@/pages/SysDevParamsPage"),
 };
 
 /** 侧栏悬停时预取页面 chunk，缩短首屏 LCP。 */

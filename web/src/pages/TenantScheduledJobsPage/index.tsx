@@ -1,4 +1,5 @@
 import { Page, PageBody, PageHeader, PageMessage, TablePagination } from "@/components/layout/AppShell";
+import { ScheduledJobRunsSheet } from "@/components/scheduled-job-runs";
 import { ConfigurableTable } from "@/components/table/ConfigurableTable";
 import { TableColumnSettingsSheet } from "@/components/table/TableColumnSettingsSheet";
 import { TableSettingsButton } from "@/components/table/TableSettingsButton";
@@ -54,6 +55,13 @@ export function TenantScheduledJobsPage() {
           onPageSizeChange={pagination.setPageSize}
         />
       </PageBody>
+      <ScheduledJobRunsSheet
+        open={page.historyOpen}
+        onOpenChange={page.setHistoryOpen}
+        jobCode={page.historyJob?.code ?? null}
+        jobName={page.historyJob?.name}
+        scope="tenant"
+      />
       <TableColumnSettingsSheet
         title="定时任务"
         open={page.table.settingsOpen}

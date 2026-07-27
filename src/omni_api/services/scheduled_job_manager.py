@@ -5,19 +5,28 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime
+from typing import Any, Mapping
 
 from omni_api.data.mysql.connection import mysql_engine
 from omni_api.data.mysql.scheduled_job_repo import ScheduledJobRepo
+from omni_api.data.mysql.scheduled_job_run_repo import ScheduledJobRunRepo
 from omni_api.data.mysql.tenant_repo import TenantRepo
 from omni_api.data.mysql.utc import utc_now
 from omni_api.schemas.scheduled_job import (
+    PaginatedScheduledJobRuns,
     ScheduledJobRecord,
+    ScheduledJobRunQuery,
+    ScheduledJobRunRecord,
+    ScheduledJobScope,
     ScheduledJobUpdate,
     TenantScheduledJobRecord,
     croniter_from_expr,
 )
-from omni_api.services.scheduled_job_registry import get_job_definition
-from omni_api.services.tenant_expiry import is_expired_at
+from omni_api.services import scheduled_job_runner as runner
+from omni_api.services.scheduled_job_registry import (
+    SCHEDULED_JOB_DEFINITIONS,
+    get_job_definition,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +82,13 @@ class ScheduledJobManager:
         logger.info("定时任务管理器已停止")
 
     async def list_jobs(self) -> list[ScheduledJobRecord]:
+        known = {item.code for item in SCHEDULED_JOB_DEFINITIONS}
         jobs = await self._repo().list_jobs()
-        return [job.model_copy(update={"active": self.is_active(job.code)}) for job in jobs]
+        return [
+            job.model_copy(update={"active": self.is_active(job.code)})
+            for job in jobs
+            if job.code in known
+        ]
 
     async def list_tenant_jobs(self, tenant_id: int) -> list[TenantScheduledJobRecord]:
         return await self._repo().list_tenant_jobs(tenant_id)
@@ -87,6 +101,12 @@ class ScheduledJobManager:
         if job is None:
             return None
         return job.model_copy(update={"active": self.is_active(code)})
+
+    async def list_runs(self, query: ScheduledJobRunQuery) -> PaginatedScheduledJobRuns:
+        return await ScheduledJobRunRepo(mysql_engine()).list_runs(query)
+
+    async def get_run(self, run_id: str) -> ScheduledJobRunRecord | None:
+        return await ScheduledJobRunRepo(mysql_engine()).get_by_run_id(run_id)
 
     async def update_job(self, code: str, body: ScheduledJobUpdate) -> ScheduledJobRecord | None:
         if get_job_definition(code) is None:
@@ -127,38 +147,92 @@ class ScheduledJobManager:
             return await self.get_job(code)
         return await self.update_job(code, ScheduledJobUpdate(enabled=False))
 
-    async def trigger_job(self, code: str, *, tenant_id: int | None = None) -> bool:
+    async def trigger_job(
+        self,
+        code: str,
+        *,
+        tenant_id: int | None = None,
+        params: Mapping[str, Any] | None = None,
+        actor_user_id: int | None = None,
+        actor_username: str | None = None,
+        trigger_request_id: str | None = None,
+    ) -> bool:
         """尝试启动一次执行。已在执行中则返回 False（调用方仍返回相同成功文案）。"""
         definition = get_job_definition(code)
         if definition is None:
             raise ValueError(f"未知任务: {code}")
         run_tenant_id = await self._resolve_trigger_tenant(definition.scope, tenant_id)
-        return await self._spawn_run(code, manual=True, tenant_id=run_tenant_id)
+        return await self._spawn_run(
+            code,
+            manual=True,
+            tenant_id=run_tenant_id,
+            params=params,
+            actor_user_id=actor_user_id,
+            actor_username=actor_username,
+            trigger_request_id=trigger_request_id,
+        )
 
     async def _resolve_trigger_tenant(
-        self, scope: str, tenant_id: int | None
+        self, scope: ScheduledJobScope, tenant_id: int | None
     ) -> int | None:
-        if scope == "tenant":
-            if tenant_id is None:
-                raise ValueError("请选择执行租户")
-            tenant = await TenantRepo(mysql_engine()).get_by_id(tenant_id)
-            if tenant is None:
-                raise ValueError("租户不存在")
-            if not tenant.enabled:
-                raise ValueError("租户已禁用，无法执行")
-            if is_expired_at(tenant.expires_at):
-                raise ValueError("租户套餐已过期，无法执行定时任务")
+        if scope != "tenant":
             return tenant_id
+        if tenant_id is None:
+            raise ValueError("请选择执行租户")
+        tenants = TenantRepo(mysql_engine())
+        tenant = await tenants.get_by_id(tenant_id)
+        if tenant is None:
+            raise ValueError("租户不存在")
+        if not tenant.enabled:
+            raise ValueError("租户已禁用，无法执行")
+        if await tenants.is_tenant_expired(tenant_id):
+            raise ValueError("租户套餐已过期，无法执行定时任务")
         return tenant_id
 
-    async def _spawn_run(self, code: str, *, manual: bool, tenant_id: int | None) -> bool:
+    async def _spawn_run(
+        self,
+        code: str,
+        *,
+        manual: bool,
+        tenant_id: int | None,
+        params: Mapping[str, Any] | None = None,
+        actor_user_id: int | None = None,
+        actor_username: str | None = None,
+        trigger_request_id: str | None = None,
+    ) -> bool:
         key = _run_key(code, tenant_id)
+        definition = get_job_definition(code)
+        if definition is None:
+            return False
         async with self._claim_guard:
-            if key in self._running_keys:
-                return False
-            self._running_keys.add(key)
+            already_running = key in self._running_keys
+            if not already_running:
+                self._running_keys.add(key)
+        if already_running:
+            await runner.record_skipped(
+                job_code=code,
+                scope=definition.scope,
+                tenant_id=tenant_id,
+                manual=manual,
+                params=params,
+                actor_user_id=actor_user_id,
+                actor_username=actor_username,
+                trigger_request_id=trigger_request_id,
+                reason="already_running",
+                summary="任务已在执行中，跳过本次触发",
+            )
+            return False
         task = asyncio.create_task(
-            self._execute_claimed(code, manual=manual, tenant_id=tenant_id, key=key),
+            self._execute_claimed(
+                code,
+                manual=manual,
+                tenant_id=tenant_id,
+                key=key,
+                params=params,
+                actor_user_id=actor_user_id,
+                actor_username=actor_username,
+                trigger_request_id=trigger_request_id,
+            ),
             name=f"{'manual' if manual else 'cron'}-{key}",
         )
         self._run_tasks[key] = task
@@ -247,62 +321,27 @@ class ScheduledJobManager:
             await self._spawn_run(code, manual=False, tenant_id=tenant_id)
 
     async def _execute_claimed(
-        self, code: str, *, manual: bool, tenant_id: int | None, key: str
+        self,
+        code: str,
+        *,
+        manual: bool,
+        tenant_id: int | None,
+        key: str,
+        params: Mapping[str, Any] | None = None,
+        actor_user_id: int | None = None,
+        actor_username: str | None = None,
+        trigger_request_id: str | None = None,
     ) -> None:
         try:
-            await self._execute_job(code, manual=manual, tenant_id=tenant_id)
+            await runner.execute_job(
+                code,
+                manual=manual,
+                tenant_id=tenant_id,
+                params=params,
+                actor_user_id=actor_user_id,
+                actor_username=actor_username,
+                trigger_request_id=trigger_request_id,
+            )
         finally:
             async with self._claim_guard:
                 self._running_keys.discard(key)
-
-    async def _execute_job(self, code: str, *, manual: bool, tenant_id: int | None) -> None:
-        definition = get_job_definition(code)
-        if definition is None:
-            return
-        if not await self._ensure_tenant_job_runnable(code, tenant_id, manual=manual):
-            return
-        repo = self._repo()
-        job = await repo.get_by_code(code)
-        if job is None:
-            return
-        cron_expr = job.cron_expr
-        await repo.mark_running(code, tenant_id=tenant_id)
-        try:
-            detail = await definition.handler(manual, tenant_id)
-            message = detail if detail else ("手动触发成功" if manual else "执行成功")
-            await repo.record_run_result(
-                code,
-                status="success",
-                message=message[:512],
-                cron_expr=cron_expr,
-                tenant_id=tenant_id,
-            )
-        except Exception as exc:
-            logger.exception("定时任务 %s 执行失败", code)
-            await repo.record_run_result(
-                code,
-                status="failure",
-                message=str(exc)[:512],
-                cron_expr=cron_expr,
-                tenant_id=tenant_id,
-            )
-            if manual:
-                raise
-
-    async def _ensure_tenant_job_runnable(
-        self, code: str, tenant_id: int | None, *, manual: bool
-    ) -> bool:
-        if tenant_id is None:
-            return True
-        tenant = await TenantRepo(mysql_engine()).get_by_id(tenant_id)
-        if tenant is None:
-            if manual:
-                raise ValueError("租户不存在")
-            logger.info("跳过定时任务 %s：租户不存在", code)
-            return False
-        if not tenant.enabled or is_expired_at(tenant.expires_at):
-            if manual:
-                raise ValueError("租户套餐已过期，无法执行定时任务")
-            logger.info("跳过定时任务 %s：租户已禁用或已过期 tenant_id=%s", code, tenant_id)
-            return False
-        return True

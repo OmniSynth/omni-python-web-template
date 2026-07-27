@@ -17,8 +17,21 @@ from omni_api.schemas.dev_param import (
     DevParamRecord,
     DevParamUpdate,
 )
+from omni_api.schemas.oss_param import (
+    DEFAULT_OSS_BASIC_PATH,
+    OSS_PARAM_BASIC_PATH,
+    OSS_PARAM_DOMAIN,
+    effective_tenant_basic_path,
+    format_oss_basic_path_display,
+    validate_oss_domain,
+)
+from omni_api.services.dev_param_view import (
+    build_param_item_view,
+    resolve_param_write_value,
+)
+from omni_api.storage.factory import load_system_oss_params
 
-_PARAM_DEF_BY_KEY = {item[0]: item for item in DEV_PARAM_DEFINITIONS}
+_PARAM_DEF_BY_KEY = {item.param_key: item for item in DEV_PARAM_DEFINITIONS}
 
 
 async def _resolve_user_display_names(
@@ -50,29 +63,29 @@ def _attach_user_names(
 
 
 async def _param_views_for_group(
+    engine: AsyncEngine,
     groups: DevParamGroupRepo,
     group_id: int,
     records: dict[str, DevParamRecord],
     tenant_id: int,
 ) -> list[DevParamItemView]:
+    sys_params = await load_system_oss_params(engine)
+    sys_basic = sys_params.get(OSS_PARAM_BASIC_PATH) or DEFAULT_OSS_BASIC_PATH
+    tenant_basic = effective_tenant_basic_path(sys_basic, tenant_id)
     params: list[DevParamItemView] = []
-    for key, group_key, label, field_type, description in DEV_PARAM_DEFINITIONS:
-        gid = await groups.get_id_for_key(group_key, tenant_id)
+    for meta in DEV_PARAM_DEFINITIONS:
+        gid = await groups.get_id_for_key(meta.group_key, tenant_id)
         if gid != group_id:
             continue
-        rec = records.get(key)
-        params.append(
-            DevParamItemView(
-                param_key=key,
-                param_value=rec.param_value if rec else "",
-                remark=rec.remark if rec else "",
-                updated_at=rec.updated_at if rec else None,
-                label=label,
-                field_type=field_type,
-                description=description,
-                editable=True,
-            )
-        )
+        if meta.param_key == OSS_PARAM_BASIC_PATH:
+            view = build_param_item_view(meta, records.get(meta.param_key), editable=False)
+            view.field_type = "readonly"
+            view.param_value = format_oss_basic_path_display(tenant_basic)
+            view.description = "由系统基础路径与租户 ID 自动生成，不可编辑"
+            view.placeholder = ""
+            params.append(view)
+            continue
+        params.append(build_param_item_view(meta, records.get(meta.param_key)))
     return params
 
 
@@ -136,7 +149,9 @@ class DevParamService:
         records = {r.param_key: r for r in await self._repo.list_by_group_id(group_id, tid)}
         user_ids = {uid for uid in (group.created_by, group.updated_by) if uid is not None}
         names = await _resolve_user_display_names(self._engine, user_ids)
-        params = await _param_views_for_group(self._groups, group_id, records, tid)
+        params = await _param_views_for_group(
+            self._engine, self._groups, group_id, records, tid
+        )
         summary = _attach_user_names(
             DevParamGroupSummary(
                 id=group.id,
@@ -171,8 +186,7 @@ class DevParamService:
         meta = _PARAM_DEF_BY_KEY.get(param_key)
         if meta is None:
             return None
-        _, group_key, _, _, _ = meta
-        group_id = await self._groups.get_id_for_key(group_key, tid)
+        group_id = await self._groups.get_id_for_key(meta.group_key, tid)
         detail = await self.get_group_detail(group_id, tid)
         if detail is None:
             return None
@@ -225,12 +239,14 @@ class DevParamService:
         body: DevParamUpdate,
         tenant_id: int | None = None,
     ) -> DevParamRecord:
-        allowed = {item[0] for item in DEV_PARAM_DEFINITIONS}
-        if key not in allowed:
+        meta = _PARAM_DEF_BY_KEY.get(key)
+        if meta is None:
             raise ValueError(f"不支持的开发参数: {key}")
-        return await self._repo.upsert(
-            key,
-            body.param_value,
-            body.remark,
-            tenant_id=tenant_id,
-        )
+        if key == OSS_PARAM_BASIC_PATH:
+            raise ValueError("租户基础路径由系统路径与租户 ID 自动生成，不可修改")
+        tid = self._resolve_tenant(tenant_id)
+        existing = await self._repo.get_value(key, tid)
+        value = resolve_param_write_value(meta, body.param_value, existing)
+        if key == OSS_PARAM_DOMAIN:
+            value = validate_oss_domain(value)
+        return await self._repo.upsert(key, value, body.remark, tenant_id=tid)

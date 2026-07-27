@@ -24,8 +24,16 @@ from omni_api.schemas.audit_log import (
 )
 from omni_api.schemas.auth import UserRecord
 from omni_api.schemas.list_query import SortOrder
+from omni_api.schemas.scheduled_job import (
+    PaginatedScheduledJobRuns,
+    ScheduledJobRunQuery,
+    ScheduledJobRunRecord,
+    ScheduledJobRunStatus,
+    ScheduledJobTriggerType,
+)
 from omni_api.schemas.utc_datetime import parse_api_utc_optional
 from omni_api.services.audit_service import AuditService
+from omni_api.services.scheduled_job_manager import ScheduledJobManager
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +168,48 @@ async def get_slow_sql_log(
     if rec is None:
         raise HTTPException(status_code=404, detail="慢 SQL 日志不存在")
     return rec
+
+
+@router.get("/scheduled-job-runs", response_model=PaginatedScheduledJobRuns)
+async def list_scheduled_job_runs(
+    occurred_from: str | None = Query(None, alias="from"),
+    occurred_to: str | None = Query(None, alias="to"),
+    job_code: str | None = None,
+    tenant_id: int | None = Query(default=None, gt=0),
+    status: ScheduledJobRunStatus | None = None,
+    trigger_type: ScheduledJobTriggerType | None = None,
+    request_id: str | None = None,
+    keyword: str | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    _: object = Depends(require_permission("system.audit.read")),
+) -> PaginatedScheduledJobRuns:
+    """审计中心：全量任务执行记录。"""
+    return await ScheduledJobManager.get().list_runs(
+        ScheduledJobRunQuery(
+            job_code=job_code,
+            tenant_id=tenant_id,
+            status=status,
+            trigger_type=trigger_type,
+            trigger_request_id=request_id,
+            keyword=keyword,
+            started_from=parse_api_utc_optional(occurred_from),
+            started_to=parse_api_utc_optional(occurred_to),
+            page=page,
+            page_size=page_size,
+        )
+    )
+
+
+@router.get("/scheduled-job-runs/{run_id}", response_model=ScheduledJobRunRecord)
+async def get_scheduled_job_run(
+    run_id: str,
+    _: object = Depends(require_permission("system.audit.read")),
+) -> ScheduledJobRunRecord:
+    record = await ScheduledJobManager.get().get_run(run_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="执行记录不存在")
+    return record
 
 
 @router.post("/export", response_model=AuditExportResult)

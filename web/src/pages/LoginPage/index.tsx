@@ -5,16 +5,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useFieldErrors } from "@/hooks/useFieldErrors";
 import { errorMessage, showToastError } from "@/lib/form-feedback";
 import { resolveDefaultHomePath } from "@/lib/nav-menu-data";
+import { resolvePostAuthPath } from "@/lib/post-auth-path";
 import { useAuthStore } from "@/stores/auth-store";
 import { LoginFormPanel } from "./components/login-form-panel";
 import { LoginHeroPanel } from "./components/login-hero-panel";
 
 export function LoginPage() {
-  const { user, login, loading, defaultHomePath } = useAuth();
+  const { user, login, loading, refreshing, defaultHomePath } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const savedFrom = (location.state as { from?: string } | null)?.from;
-  const from = savedFrom ?? defaultHomePath ?? "/";
+  const homeFallback = defaultHomePath ?? "/";
+  const from = resolvePostAuthPath(savedFrom, homeFallback);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -30,11 +32,19 @@ export function LoginPage() {
   }
 
   if (user && !user.need_tenant_select) {
+    // 无回跳目标时等导航树就绪，再落到菜单第一项
+    if ((loading || refreshing) && !savedFrom && !defaultHomePath) {
+      return (
+        <AuthPageShell contentClassName="items-center justify-center p-6">
+          <p className="text-sm text-muted-foreground">加载中…</p>
+        </AuthPageShell>
+      );
+    }
     return <Navigate to={from} replace />;
   }
 
   if (user?.need_tenant_select) {
-    return <Navigate to="/select-tenant" replace />;
+    return <Navigate to="/select-tenant" replace state={savedFrom ? { from: savedFrom } : undefined} />;
   }
 
   async function handleSubmit(e: SubmitEvent) {
@@ -51,12 +61,12 @@ export function LoginPage() {
     try {
       const result = await login(username.trim(), password);
       if (result.needTenantSelect) {
-        navigate("/select-tenant", { replace: true });
+        navigate("/select-tenant", { replace: true, state: savedFrom ? { from: savedFrom } : undefined });
         return;
       }
       const { navTree, user: authedUser } = useAuthStore.getState();
       const home = resolveDefaultHomePath(navTree, (code) => new Set(authedUser?.permissions ?? []).has(code)) ?? "/";
-      navigate(savedFrom ?? home, { replace: true });
+      navigate(resolvePostAuthPath(savedFrom, home), { replace: true });
     } catch (err) {
       showToastError(errorMessage(err, "登录失败"));
     } finally {

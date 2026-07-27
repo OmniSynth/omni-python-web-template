@@ -1,4 +1,4 @@
-import { json } from "@/lib/api/client";
+import { json, uploadForm } from "@/lib/api/client";
 import type { UserProfile } from "@/types/auth";
 import type {
   TablePreferenceConfig,
@@ -15,6 +15,11 @@ export const profileApi = {
         method: "PATCH",
         body: JSON.stringify(body),
       }),
+    uploadAvatar: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return uploadForm<UserProfile>("/api/v1/users/me/avatar", form);
+    },
     changePassword: (body: { old_password: string; new_password: string }) =>
       json<{ status: string }>("/api/v1/users/me/change-password", {
         method: "POST",

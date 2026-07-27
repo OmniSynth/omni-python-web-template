@@ -35,6 +35,10 @@ _TIMING_KEY = "_sql_audit_start"
 _PARAMS_KEY = "_sql_audit_params"
 _EXECUTEMANY_KEY = "_sql_audit_executemany"
 _AUDIT_TABLE_MARKER = "t_sys_audit_"
+_SKIP_TABLE_MARKERS = (
+    _AUDIT_TABLE_MARKER,
+    "t_sys_scheduled_job_run",
+)
 _INTERNAL_SQL_MARKERS = (
     "information_schema.",
     "mysql.",
@@ -87,7 +91,7 @@ def _should_skip(statement: str) -> bool:
     if get_sql_audit_depth() > 0:
         return True
     lower = statement.lower()
-    if _AUDIT_TABLE_MARKER in lower:
+    if any(marker in lower for marker in _SKIP_TABLE_MARKERS):
         return True
     if any(marker in lower for marker in _INTERNAL_SQL_MARKERS):
         return True

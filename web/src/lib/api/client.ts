@@ -27,20 +27,7 @@ function requestMethod(options: RequestInit): string {
   return (options.method ?? "GET").toUpperCase();
 }
 
-export async function json<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const method = requestMethod(options);
-  if (method !== "GET" && method !== "HEAD" && !isWriteAllowlisted(url) && !guardTenantWritable()) {
-    throw new ApiError(TENANT_EXPIRED_MSG, 403);
-  }
-
-  const r = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-      ...options.headers,
-    },
-    ...options,
-  });
+async function parseApiResponse<T>(r: Response): Promise<T> {
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
     const msg = (data as { detail?: string }).detail || r.statusText;
@@ -58,4 +45,39 @@ export async function json<T>(url: string, options: RequestInit = {}): Promise<T
     throw new ApiError(text, r.status);
   }
   return data as T;
+}
+
+export async function json<T>(url: string, options: RequestInit = {}): Promise<T> {
+  const method = requestMethod(options);
+  if (method !== "GET" && method !== "HEAD" && !isWriteAllowlisted(url) && !guardTenantWritable()) {
+    throw new ApiError(TENANT_EXPIRED_MSG, 403);
+  }
+
+  const r = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+      ...options.headers,
+    },
+    ...options,
+  });
+  return parseApiResponse<T>(r);
+}
+
+/** multipart 上传：勿手动设置 Content-Type，由浏览器带 boundary。 */
+export async function uploadForm<T>(url: string, form: FormData, options: RequestInit = {}): Promise<T> {
+  const method = requestMethod({ ...options, method: options.method ?? "POST" });
+  if (method !== "GET" && method !== "HEAD" && !isWriteAllowlisted(url) && !guardTenantWritable()) {
+    throw new ApiError(TENANT_EXPIRED_MSG, 403);
+  }
+  const r = await fetch(url, {
+    method: "POST",
+    ...options,
+    headers: {
+      ...authHeaders(),
+      ...options.headers,
+    },
+    body: form,
+  });
+  return parseApiResponse<T>(r);
 }

@@ -1,12 +1,20 @@
-"""MySQL 列 COMMENT 片段（DDL 复用）。"""
+"""MySQL 列/表 COMMENT 片段（DDL 复用）。"""
 
 from __future__ import annotations
 
 
+def _escape_comment(text: str) -> str:
+    return text.replace("\\", "\\\\").replace("'", "''")
+
+
 def cmt(text: str) -> str:
     """生成列 COMMENT 子句。"""
-    escaped = text.replace("\\", "\\\\").replace("'", "''")
-    return f" COMMENT '{escaped}'"
+    return f" COMMENT '{_escape_comment(text)}'"
+
+
+def table_cmt(text: str) -> str:
+    """生成表级 COMMENT 子句（置于 CREATE TABLE 末尾括号后）。"""
+    return f" COMMENT='{_escape_comment(text)}'"
 
 
 # 通用

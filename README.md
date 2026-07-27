@@ -123,6 +123,7 @@ OMNI_PROFILE=local uv run scripts/seed_admin.py
 - [多租户](docs/multitenant.md)
 - [RBAC](docs/rbac.md)
 - [审计日志](docs/audit-logging.md)
+- [定时任务与执行审计](docs/scheduled-jobs.md)
 - [Web 主题](docs/web-theme.md)
 - [Web 表单与错误反馈](docs/web-forms.md)
 - [Web 表格与列偏好](docs/web-tables.md)

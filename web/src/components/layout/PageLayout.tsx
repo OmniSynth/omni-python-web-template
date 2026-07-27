@@ -14,11 +14,11 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
     <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-4">
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-lg font-normal tracking-tight text-primary sm:text-xl">{title}</h1>
-        {subtitle ? (
-          <p className="mt-0.5 hidden truncate text-sm text-muted-foreground sm:block">{subtitle}</p>
-        ) : null}
+        {subtitle ? <p className="mt-0.5 hidden truncate text-sm text-muted-foreground sm:block">{subtitle}</p> : null}
       </div>
-      {action ? <PageHeaderActionsRow className="w-auto max-w-[55%] sm:max-w-none">{action}</PageHeaderActionsRow> : null}
+      {action ? (
+        <PageHeaderActionsRow className="w-auto max-w-[55%] sm:max-w-none">{action}</PageHeaderActionsRow>
+      ) : null}
     </header>
   );
 }

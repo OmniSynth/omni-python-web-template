@@ -16,7 +16,7 @@ from omni_api.data.mysql.biz_table import (
     SYS_AUDIT_OPERATION_LOGS,
     SYS_AUDIT_REQUEST_LOGS,
 )
-from omni_api.data.mysql.ddl_comment import AUDIT_LEVEL_ENUM, AUDIT_RESULT_ENUM, ID_PK, cmt
+from omni_api.data.mysql.ddl_comment import AUDIT_LEVEL_ENUM, AUDIT_RESULT_ENUM, ID_PK, cmt, table_cmt
 from omni_api.data.mysql.ddl_exec import execute_create_table_if_missing
 from omni_api.data.mysql.list_sort import build_order_clause
 from omni_api.data.mysql.utc import utc_now
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS {SYS_AUDIT_REQUEST_LOGS} (
     KEY idx_audit_req_tenant (tenant_id),
     KEY idx_audit_req_path (path(64)),
     KEY idx_audit_req_status (status_code)
-);
+){table_cmt("请求审计日志")};
 
 CREATE TABLE IF NOT EXISTS {SYS_AUDIT_OPERATION_LOGS} (
     id BIGINT AUTO_INCREMENT PRIMARY KEY{ID_PK},
@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS {SYS_AUDIT_OPERATION_LOGS} (
     KEY idx_audit_op_cat_action (category, action),
     KEY idx_audit_op_request (request_id),
     KEY idx_audit_op_resource (resource_type, resource_id)
-);
+){table_cmt("操作审计日志")};
 """
 
 

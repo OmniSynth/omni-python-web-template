@@ -5,6 +5,7 @@ export const APP_MENU_ROUTES: Array<{ code: string; path: string; componentKey: 
   { code: "menu.permissions", path: "sys/permissions", componentKey: "permissions" },
   { code: "menu.audit", path: "sys/audit", componentKey: "audit" },
   { code: "menu.scheduled_jobs", path: "sys/scheduled-jobs", componentKey: "scheduled_jobs" },
+  { code: "menu.sys_dev_params", path: "sys/dev-params", componentKey: "sys_dev_params" },
   { code: "menu.orgs", path: "sys/orgs", componentKey: "orgs" },
   { code: "menu.tenants", path: "sys/tenants", componentKey: "tenants" },
   { code: "menu.tenant_users", path: "users", componentKey: "users" },

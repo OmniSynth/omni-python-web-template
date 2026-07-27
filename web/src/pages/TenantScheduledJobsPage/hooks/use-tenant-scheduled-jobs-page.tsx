@@ -15,6 +15,8 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "success" | "dest
   success: "success",
   failure: "destructive",
   running: "default",
+  partial: "secondary",
+  skipped: "secondary",
 };
 
 export function useTenantScheduledJobsPage() {
@@ -22,6 +24,7 @@ export function useTenantScheduledJobsPage() {
   const [jobs, setJobs] = useState<TenantScheduledJobRecord[]>([]);
   const [pageLoadError, setPageLoadError] = useState("");
   const [actionCode, setActionCode] = useState<string | null>(null);
+  const [historyJob, setHistoryJob] = useState<TenantScheduledJobRecord | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -104,8 +107,11 @@ export function useTenantScheduledJobsPage() {
           ),
       },
       createActionsColumn({
-        defaultWidth: 100,
-        actionDefs: [{ id: "trigger", label: "执行" }],
+        defaultWidth: 140,
+        actionDefs: [
+          { id: "trigger", label: "执行" },
+          { id: "history", label: "记录" },
+        ],
         renderItems: (job) => [
           {
             id: "trigger",
@@ -113,6 +119,12 @@ export function useTenantScheduledJobsPage() {
             permission: "tenant.scheduled_job.trigger",
             disabled: actionCode === job.code || !job.schedule_enabled,
             onClick: () => void handleTrigger(job),
+          },
+          {
+            id: "history",
+            label: "记录",
+            permission: "tenant.scheduled_job.list",
+            onClick: () => setHistoryJob(job),
           },
         ],
       }),
@@ -127,5 +139,14 @@ export function useTenantScheduledJobsPage() {
     defaultColumns: columns,
   });
 
-  return { pageLoadError, columns, table };
+  return {
+    pageLoadError,
+    columns,
+    table,
+    historyJob,
+    historyOpen: historyJob != null,
+    setHistoryOpen: (open: boolean) => {
+      if (!open) setHistoryJob(null);
+    },
+  };
 }

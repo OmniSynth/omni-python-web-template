@@ -101,13 +101,14 @@ export async function hydrateAuthSession(set: AuthSet): Promise<void> {
     }
   }
   setSessionToken(row.token);
+  // 有 token 时标记 refreshing，避免首屏在远程会话同步前因缓存权限不全被踢到默认首页
   set({
     token: row.token,
     user: row.user,
     navTree,
     tenantDisplayCache,
     loading: !hasCachedUser,
-    refreshing: false,
+    refreshing: Boolean(row.token),
   });
 }
 

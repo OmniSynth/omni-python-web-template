@@ -5,6 +5,7 @@ import { buildPresetDateRange, dateOnlyToApiUtc } from "@/lib/datetime";
 import { errorMessage, showToastError, showToastSuccess } from "@/lib/form-feedback";
 import type { PageSizeOption } from "@/lib/pagination";
 import type { OperationLogRecord, RequestLogRecord, SlowSqlLogRecord } from "@/types/audit";
+import type { ScheduledJobRunRecord } from "@/types/scheduled-job";
 import type { AuditTabRow, Tab } from "../types";
 
 export function useAuditLogsPageActions({
@@ -14,6 +15,7 @@ export function useAuditLogsPageActions({
   setRequestDetail,
   setOperationDetail,
   setSlowSqlDetail,
+  setJobRunDetail,
   setDetailOpen,
   setExporting,
   setPage,
@@ -27,6 +29,7 @@ export function useAuditLogsPageActions({
   setRequestDetail: Dispatch<SetStateAction<RequestLogRecord | null>>;
   setOperationDetail: Dispatch<SetStateAction<OperationLogRecord | null>>;
   setSlowSqlDetail: Dispatch<SetStateAction<SlowSqlLogRecord | null>>;
+  setJobRunDetail: Dispatch<SetStateAction<ScheduledJobRunRecord | null>>;
   setDetailOpen: Dispatch<SetStateAction<boolean>>;
   setExporting: Dispatch<SetStateAction<boolean>>;
   setPage: Dispatch<SetStateAction<number>>;
@@ -34,27 +37,38 @@ export function useAuditLogsPageActions({
   tablePrefs: { setSettingsOpen: (open: boolean) => void };
   setTab: Dispatch<SetStateAction<Tab>>;
 }) {
+  function clearOtherDetails(keep: "request" | "operation" | "slow-sql" | "job-run") {
+    if (keep !== "request") setRequestDetail(null);
+    if (keep !== "operation") setOperationDetail(null);
+    if (keep !== "slow-sql") setSlowSqlDetail(null);
+    if (keep !== "job-run") setJobRunDetail(null);
+  }
+
   async function openRequestDetail(id: number) {
     const rec = await api.audit.getRequest(id);
     setRequestDetail(rec);
-    setOperationDetail(null);
-    setSlowSqlDetail(null);
+    clearOtherDetails("request");
     setDetailOpen(true);
   }
 
   async function openOperationDetail(id: number) {
     const rec = await api.audit.getOperation(id);
     setOperationDetail(rec);
-    setRequestDetail(null);
-    setSlowSqlDetail(null);
+    clearOtherDetails("operation");
     setDetailOpen(true);
   }
 
   async function openSlowSqlDetail(id: number) {
     const rec = await api.audit.getSlowSql(id);
     setSlowSqlDetail(rec);
-    setRequestDetail(null);
-    setOperationDetail(null);
+    clearOtherDetails("slow-sql");
+    setDetailOpen(true);
+  }
+
+  async function openJobRunDetail(runId: string) {
+    const rec = await api.audit.getScheduledJobRun(runId);
+    setJobRunDetail(rec);
+    clearOtherDetails("job-run");
     setDetailOpen(true);
   }
 
@@ -89,6 +103,8 @@ export function useAuditLogsPageActions({
       void openRequestDetail((row as RequestLogRecord).id);
     } else if (tab === "operations") {
       void openOperationDetail((row as OperationLogRecord).id);
+    } else if (tab === "job-runs") {
+      void openJobRunDetail((row as ScheduledJobRunRecord).run_id);
     } else {
       void openSlowSqlDetail((row as SlowSqlLogRecord).id);
     }

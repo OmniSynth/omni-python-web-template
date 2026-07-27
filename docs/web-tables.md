@@ -32,6 +32,8 @@
 | `roles` | `main` | RolesPage | 客户端 | 前端 |
 | `audit` | `requests` | AuditLogsPage | 服务端 | 后端 `sort_by` |
 | `audit` | `operations` | AuditLogsPage | 服务端 | 后端 `sort_by` |
+| `audit` | `slow-sql` | AuditLogsPage | 服务端 | 后端 `sort_by` |
+| `audit` | `job-runs` | AuditLogsPage | 服务端 | 前端默认 |
 | `tenants` | `main` | TenantsPage | 无 | 前端 |
 | `orgs` | `main` | OrgsPage | 无 | 前端 |
 | `dev_params` | `main` | DevParamsPage | 服务端 | 后端 `sort_by` |

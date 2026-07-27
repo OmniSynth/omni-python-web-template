@@ -14,6 +14,8 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "success" | "dest
   success: "success",
   failure: "destructive",
   running: "default",
+  partial: "secondary",
+  skipped: "secondary",
 };
 
 export function useScheduledJobColumns({
@@ -22,6 +24,7 @@ export function useScheduledJobColumns({
   onTrigger,
   onStart,
   onStop,
+  onHistory,
   actionCode,
 }: {
   formatDateTime: (value: string) => string;
@@ -29,6 +32,7 @@ export function useScheduledJobColumns({
   onTrigger: (job: ScheduledJobRecord) => void;
   onStart: (job: ScheduledJobRecord) => void;
   onStop: (job: ScheduledJobRecord) => void;
+  onHistory: (job: ScheduledJobRecord) => void;
   actionCode: string | null;
 }) {
   return useMemo<TableColumnDef<ScheduledJobRecord>[]>(
@@ -106,10 +110,11 @@ export function useScheduledJobColumns({
           ),
       },
       createActionsColumn({
-        defaultWidth: 160,
+        defaultWidth: 200,
         actionDefs: [
           { id: "edit", label: "编辑" },
           { id: "trigger", label: "执行" },
+          { id: "history", label: "记录" },
           { id: "start", label: "启动" },
           { id: "stop", label: "停止" },
         ],
@@ -121,6 +126,12 @@ export function useScheduledJobColumns({
             permission: "system.scheduled_job.trigger",
             disabled: actionCode === job.code,
             onClick: () => void onTrigger(job),
+          },
+          {
+            id: "history",
+            label: "记录",
+            permission: "system.scheduled_job.list",
+            onClick: () => onHistory(job),
           },
           {
             id: "start",
@@ -141,6 +152,6 @@ export function useScheduledJobColumns({
         ],
       }),
     ],
-    [actionCode, formatDateTime, onEdit, onStart, onStop, onTrigger],
+    [actionCode, formatDateTime, onEdit, onHistory, onStart, onStop, onTrigger],
   );
 }

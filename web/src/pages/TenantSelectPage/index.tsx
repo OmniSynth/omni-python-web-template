@@ -8,25 +8,34 @@ import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
 import { errorMessage, showToastError } from "@/lib/form-feedback";
 import { resolveDefaultHomePath } from "@/lib/nav-menu-data";
+import { resolvePostAuthPath } from "@/lib/post-auth-path";
 import { useAuthStore } from "@/stores/auth-store";
 import type { BoundTenantInfo } from "@/types/auth";
+
+type TenantSelectLocationState = {
+  accessDenied?: boolean;
+  from?: string;
+};
 
 export function TenantSelectPage() {
   const { switchTenant, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const locationState = (location.state as TenantSelectLocationState | null) ?? null;
+  const savedFrom = locationState?.from;
   const [tenants, setTenants] = useState<BoundTenantInfo[]>([]);
   const [accessError, setAccessError] = useState("");
   const [pageLoadError, setPageLoadError] = useState("");
   const [loadingId, setLoadingId] = useState<number | null>(null);
 
   useEffect(() => {
-    const denied = (location.state as { accessDenied?: boolean } | null)?.accessDenied;
-    if (denied) {
-      setAccessError("未开通访问权限，请联系管理员");
-      navigate(location.pathname, { replace: true, state: null });
-    }
-  }, [location.pathname, location.state, navigate]);
+    if (!locationState?.accessDenied) return;
+    setAccessError("未开通访问权限，请联系管理员");
+    navigate(location.pathname, {
+      replace: true,
+      state: savedFrom ? { from: savedFrom } : null,
+    });
+  }, [location.pathname, locationState?.accessDenied, navigate, savedFrom]);
 
   useEffect(() => {
     api.auth
@@ -44,7 +53,7 @@ export function TenantSelectPage() {
       await switchTenant(tenantId);
       const { navTree, user: authedUser } = useAuthStore.getState();
       const home = resolveDefaultHomePath(navTree, (code) => new Set(authedUser?.permissions ?? []).has(code)) ?? "/";
-      navigate(home, { replace: true });
+      navigate(resolvePostAuthPath(savedFrom, home), { replace: true });
     } catch (err) {
       showToastError(errorMessage(err, "切换租户失败"));
     } finally {

@@ -1,4 +1,6 @@
 import type { OperationLogRecord, RequestLogRecord, SlowSqlLogRecord } from "@/types/audit";
+import type { ScheduledJobRunRecord } from "@/types/scheduled-job";
+import { SCHEDULED_JOB_STATUS_LABELS, SCHEDULED_JOB_TRIGGER_LABELS } from "@/types/scheduled-job";
 import type { TableColumnDef } from "@/types/table-preference";
 import { LEVEL_LABEL, SEVERITY_LABEL, TIER_LABEL } from "../types";
 
@@ -129,6 +131,61 @@ export function buildSlowSqlColumns(formatDateTime: (value: string) => string): 
       defaultWidth: 200,
       className: "max-w-[200px] truncate font-mono text-xs",
       render: (r) => r.http_path ?? "—",
+    },
+  ];
+}
+
+export function buildJobRunColumns(formatDateTime: (value: string) => string): TableColumnDef<ScheduledJobRunRecord>[] {
+  return [
+    {
+      id: "started_at",
+      label: "开始时间",
+      defaultWidth: 180,
+      render: (r) => formatDateTime(r.started_at),
+    },
+    {
+      id: "job_code",
+      label: "任务编码",
+      defaultWidth: 160,
+      className: "font-mono text-xs",
+      render: (r) => r.job_code,
+    },
+    {
+      id: "status",
+      label: "状态",
+      defaultWidth: 100,
+      render: (r) => SCHEDULED_JOB_STATUS_LABELS[r.status] ?? r.status,
+    },
+    {
+      id: "trigger_type",
+      label: "触发",
+      defaultWidth: 80,
+      render: (r) => SCHEDULED_JOB_TRIGGER_LABELS[r.trigger_type] ?? r.trigger_type,
+    },
+    {
+      id: "tenant_id",
+      label: "租户",
+      defaultWidth: 80,
+      render: (r) => (r.tenant_id != null ? `#${r.tenant_id}` : "—"),
+    },
+    {
+      id: "summary",
+      label: "摘要",
+      defaultWidth: 260,
+      className: "max-w-[260px] truncate",
+      render: (r) => r.summary || "—",
+    },
+    {
+      id: "duration_ms",
+      label: "耗时",
+      defaultWidth: 88,
+      render: (r) => (r.duration_ms != null ? `${r.duration_ms}ms` : "—"),
+    },
+    {
+      id: "actor_username",
+      label: "操作人",
+      defaultWidth: 120,
+      render: (r) => r.actor_username ?? "—",
     },
   ];
 }

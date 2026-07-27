@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 from typing import Any
 
@@ -14,6 +15,16 @@ from omni_api.data.mysql.tenant_biz_repo import TenantBizRepo
 from omni_api.data.mysql.tenant_context import resolve_tenant_id
 from omni_api.data.mysql.tenant_schema_cache import ensure_tenant_biz_provisioned
 from omni_api.schemas.dev_param import DEV_PARAM_DEFINITIONS, DevParamRecord
+from omni_api.schemas.oss_param import (
+    OSS_PARAM_ACCESS_KEY,
+    OSS_PARAM_SECRET_KEY,
+    OSS_SECRET_KEYS,
+)
+
+_ENV_BOOTSTRAP: dict[str, str] = {
+    OSS_PARAM_ACCESS_KEY: "OMNI_TENANT_OSS_ACCESS_KEY",
+    OSS_PARAM_SECRET_KEY: "OMNI_TENANT_OSS_SECRET_KEY",
+}
 
 
 def _row_to_record(row: Sequence[Any]) -> DevParamRecord:
@@ -77,6 +88,9 @@ class DevParamRepo(TenantBizRepo):
             row = (await conn.execute(sql, {"key": key})).fetchone()
         return str(row[0]) if row else None
 
+    async def get_map(self, tenant_id: int | None = None) -> dict[str, str]:
+        return {r.param_key: r.param_value for r in await self.list_all(tenant_id)}
+
     async def upsert(
         self,
         key: str,
@@ -87,11 +101,10 @@ class DevParamRepo(TenantBizRepo):
         tid = tenant_id if tenant_id is not None else self._tid()
         await self.ensure_schema(tid)
         await self._groups.ensure_defaults(tid)
-        meta = next((item for item in DEV_PARAM_DEFINITIONS if item[0] == key), None)
+        meta = next((item for item in DEV_PARAM_DEFINITIONS if item.param_key == key), None)
         if meta is None:
             raise ValueError(f"不支持的开发参数: {key}")
-        _, group_key, _, _, _ = meta
-        group_id = await self._groups.get_id_for_key(group_key, tid)
+        group_id = await self._groups.get_id_for_key(meta.group_key, tid)
         t = self.table(tid)
         existing = await self.get_value(key, tid)
         if existing is None:
@@ -124,7 +137,12 @@ class DevParamRepo(TenantBizRepo):
     async def ensure_defaults(self, tenant_id: int | None = None) -> None:
         tid = tenant_id if tenant_id is not None else self._tid()
         await self._groups.ensure_defaults(tid)
-        for key, _, _, _, _ in DEV_PARAM_DEFINITIONS:
-            if await self.get_value(key, tid) is not None:
+        for meta in DEV_PARAM_DEFINITIONS:
+            if await self.get_value(meta.param_key, tid) is not None:
                 continue
-            await self.upsert(key, "", tenant_id=tid)
+            seed = meta.default_value
+            if meta.param_key in OSS_SECRET_KEYS:
+                env_name = _ENV_BOOTSTRAP.get(meta.param_key)
+                env_val = os.environ.get(env_name, "").strip() if env_name else ""
+                seed = env_val
+            await self.upsert(meta.param_key, seed, tenant_id=tid)

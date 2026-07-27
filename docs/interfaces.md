@@ -47,6 +47,7 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 | `/sys/tenants` | 租户管理（需 `menu.tenants`） |
 | `/sys/audit` | 审计日志（需 `menu.audit`） |
 | `/sys/scheduled-jobs` | 系统定时任务管理（需 `menu.scheduled_jobs`） |
+| `/sys/dev-params` | 系统开发参数（需 `menu.sys_dev_params`，仅系统角色） |
 | `/scheduled-jobs` | 租户定时任务（手动触发，需 `menu.tenant_scheduled_jobs`） |
 | `/dev-params` | 开发参数（需 `menu.dev_params`） |
 
@@ -171,6 +172,7 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 |---|---|---|
 | GET | `/profile` | 当前用户资料（含实名认证状态） |
 | PATCH | `/profile` | 更新昵称、头像链接 |
+| POST | `/avatar` | 上传头像到系统对象存储（≤2MB，JPEG/PNG/WebP/GIF），写回 `avatar_url` |
 | POST | `/change-password` | 修改密码（校验原密码；其他会话失效） |
 | POST | `/identity` | 实名认证（姓名 + 身份证号；哈希存储，脱敏展示；提交后不可改） |
 
@@ -195,6 +197,7 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 | `GET /audit/requests` | `id`, `occurred_at`, `level`, `method`, `path`, `status_code`, `username`, `duration_ms` |
 | `GET /audit/operations` | `id`, `occurred_at`, `level`, `category`, `action`, `actor_username`, `result` |
 | `GET /audit/slow-sql` | `id`, `occurred_at`, `tier`, `severity`, `duration_ms`, `server_exec_ms`, `threshold_ms`, `http_path`, `sql_text` |
+| `GET /audit/scheduled-job-runs` | `id`, `started_at`, `job_code`, `status`, `trigger_type`, `tenant_id`, `summary`, `duration_ms` |
 
 ### 审计 `/api/v1/audit`（需对应权限码）
 
@@ -206,7 +209,11 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 | GET | `/operations/{id}` | `system.audit.read` |
 | GET | `/slow-sql` | `system.audit.read` |
 | GET | `/slow-sql/{id}` | `system.audit.read` |
+| GET | `/scheduled-job-runs` | `system.audit.read` |
+| GET | `/scheduled-job-runs/{run_id}` | `system.audit.read` |
 | POST | `/export` | `system.audit.export` |
+
+任务执行列表筛选项：`from`/`to`/`status`/`trigger_type`/`keyword`/`request_id`/`job_code`/`tenant_id`。
 
 ### 定时任务 `/api/v1/scheduled-jobs`（需 `menu.scheduled_jobs`）
 
@@ -214,6 +221,8 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 |---|---|---|---|
 | GET | `/` | `system.scheduled_job.list` | 任务列表（含 `scope`、调度状态、上次/下次执行） |
 | GET | `/tenant-options` | `system.scheduled_job.list` | 租户选择（执行/按租户停止；`q` 分页搜索） |
+| GET | `/runs/{run_id}` | `system.scheduled_job.list` | 单次执行记录详情（`run_id` UUID） |
+| GET | `/{code}/runs` | `system.scheduled_job.list` | 执行历史分页（筛 `tenant_id`/`status`/`trigger_type`/`started_from`/`started_to`） |
 | GET | `/{code}` | `system.scheduled_job.read` | 任务详情 |
 | PUT | `/{code}` | `system.scheduled_job.update` | 更新 cron（5/6 段）或启用状态 |
 | POST | `/{code}/trigger` | `system.scheduled_job.trigger` | 立即触发（`scope=tenant` 时 body 必填 `tenant_id`；202，文案「同步任务已开始执行」；并发中再触发仍返回相同成功文案） |
@@ -227,9 +236,11 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 | 方法 | 路径 | 权限码 | 说明 |
 |---|---|---|---|
 | GET | `/` | `tenant.scheduled_job.list` | 本租户可见的 `scope=tenant` 任务（名称、说明、cron、任务状态=`全局启用∧本租户调度启用`、上次/下次执行、执行结果；前端执行计划仅展示可读文案） |
+| GET | `/runs/{run_id}` | `tenant.scheduled_job.list` | 本租户单次执行记录详情 |
+| GET | `/{code}/runs` | `tenant.scheduled_job.list` | 本租户该任务执行历史分页 |
 | POST | `/{code}/trigger` | `tenant.scheduled_job.trigger` | 对本租户手动触发（临时刷新；全局或本租户调度已停止时 400；202，文案同上；并发去重） |
 
-内置任务由 `services/scheduled_job_registry.py` 注册；`scope`：`system` / `tenant`。配置在 `t_sys_scheduled_job`，租户调度启停在 `t_sys_scheduled_job_tenant`。
+内置任务由 `services/scheduled_job_registry.py` 注册；`scope`：`system` / `tenant`。配置在 `t_sys_scheduled_job`，租户调度启停在 `t_sys_scheduled_job_tenant`，逐次执行记录在 `t_sys_scheduled_job_run`（见 [scheduled-jobs.md](scheduled-jobs.md)）。
 
 - cron：5 段或 6 段（秒级）。
 - 内置 `tenant_expiry_check`：`scope=system`，默认 `*/5 * * * * *`。
@@ -246,10 +257,23 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/groups` | 开发参数分组列表（主表） |
-| GET | `/groups/{group_id}` | 分组详情与子参数列表 |
+| GET | `/groups` | 开发参数分组列表（主表；含「租户对象存储」） |
+| GET | `/groups/{group_id}` | 分组详情与子参数列表（密码字段脱敏，`configured` 表示已配置） |
 | PUT | `/groups/{group_id}` | 更新分组名称与描述 |
-| PUT | `/{param_key}` | 更新子参数值与备注 |
+| PUT | `/{param_key}` | 更新子参数值与备注（密码字段空值表示保持原值；`oss.basic_path` 只读拒绝写入；`oss.domain` 须 http(s)+主机且尾 `/`） |
+
+### 系统开发参数 `/api/v1/sys/dev-params`（需 `system.dev_param.list` / `system.dev_param.update`）
+
+仅系统角色可见（菜单挂在 `catalog.system`）。表结构与字段语义与租户开发参数同构，分组为「系统对象存储」。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/groups` | 系统开发参数分组列表 |
+| GET | `/groups/{group_id}` | 分组详情与子参数（`oss.basic_path` 展示带前导 `/`） |
+| PUT | `/groups/{group_id}` | 更新分组名称与描述 |
+| PUT | `/{param_key}` | 更新子参数（密码脱敏规则同上；`oss.domain` 校验同租户侧） |
+
+升级后执行 `uv run scripts/sync_rbac.py` 同步权限与系统表；在「系统开发参数」填入火山云 AK/SK（或启动前设置环境变量 `OMNI_SYS_OSS_ACCESS_KEY` / `OMNI_SYS_OSS_SECRET_KEY` 首次种子）。租户侧在「开发参数 → 租户对象存储」配置（可选 `OMNI_TENANT_OSS_*`）。**禁止**把密钥写入 `config/*.toml` 或提交 Git。
 
 ## main.py
 

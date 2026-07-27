@@ -218,6 +218,26 @@ def _hardcoded_secrets(lines: list[str]) -> list[tuple[int, str]]:
     return issues
 
 
+_CREATE_TABLE_RE = re.compile(r"CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\b", re.IGNORECASE)
+_TABLE_COMMENT_END_RE = re.compile(
+    r"\n\)(?:\{table_cmt\([^)]*\)\}|\s*COMMENT\s*=\s*'[^']*')\s*;",
+    re.IGNORECASE,
+)
+_BARE_TABLE_END_RE = re.compile(r"\n\);\s*")
+
+
+def _ddl_missing_table_comments(source: str) -> list[int]:
+    """返回缺少表级 COMMENT 的 CREATE TABLE 起始行号。"""
+    missing: list[int] = []
+    for match in _CREATE_TABLE_RE.finditer(source):
+        chunk = source[match.start() : match.start() + 12000]
+        if _TABLE_COMMENT_END_RE.search(chunk) is not None:
+            continue
+        if _BARE_TABLE_END_RE.search(chunk) is not None:
+            missing.append(source.count("\n", 0, match.start()) + 1)
+    return missing
+
+
 def check_file(path: Path, root: Path) -> list[Issue]:
     issues: list[Issue] = []
     rel = path.relative_to(root)
@@ -254,6 +274,17 @@ def check_file(path: Path, root: Path) -> list[Issue]:
 
     for idx, msg in _hardcoded_secrets(lines):
         issues.append(Issue(Level.ERROR, "hardcoded-secret", path, idx, msg))
+
+    for lineno in _ddl_missing_table_comments(source):
+        issues.append(
+            Issue(
+                Level.ERROR,
+                "ddl-table-comment",
+                path,
+                lineno,
+                "CREATE TABLE 缺少表级 COMMENT（须使用 table_cmt）",
+            )
+        )
 
     try:
         tree = ast.parse(source, filename=str(rel))

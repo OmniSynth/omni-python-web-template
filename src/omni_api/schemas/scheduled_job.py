@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from croniter import croniter
 from pydantic import BaseModel, Field, field_validator
 
 from omni_api.schemas.utc_datetime import UtcDateTime
 
-ScheduledJobRunStatus = Literal["success", "failure", "running"]
+ScheduledJobRunStatus = Literal["success", "failure", "running", "partial", "skipped"]
 ScheduledJobScope = Literal["system", "tenant"]
+ScheduledJobTriggerType = Literal["cron", "manual"]
+JobRunOutcomeStatus = Literal["success", "partial", "failure", "skipped"]
 
 
 def cron_uses_seconds(expr: str) -> bool:
@@ -97,3 +99,57 @@ class ScheduledJobStop(BaseModel):
     """停止调度：系统任务不传租户；租户任务可指定租户停止该租户调度。"""
 
     tenant_id: int | None = Field(default=None, gt=0, description="目标租户 ID；省略则停止任务全局调度")
+
+
+class JobRunOutcome(BaseModel):
+    """Handler 结构化返回；兼容旧版纯字符串摘要。"""
+
+    status: JobRunOutcomeStatus = "success"
+    summary: str = ""
+    result: dict[str, Any] = Field(default_factory=dict)
+    error_text: str | None = None
+
+
+class ScheduledJobRunRecord(BaseModel):
+    """单次任务执行记录（append-only）。"""
+
+    id: int
+    run_id: str
+    job_code: str
+    scope: ScheduledJobScope
+    tenant_id: int | None = None
+    trigger_type: ScheduledJobTriggerType
+    actor_user_id: int | None = None
+    actor_username: str | None = None
+    trigger_request_id: str | None = None
+    params_json: dict[str, Any] | None = None
+    context_json: dict[str, Any] | None = None
+    status: ScheduledJobRunStatus
+    summary: str = ""
+    result_json: dict[str, Any] | None = None
+    error_text: str | None = None
+    started_at: UtcDateTime
+    finished_at: UtcDateTime | None = None
+    duration_ms: int | None = None
+
+
+class ScheduledJobRunQuery(BaseModel):
+    """执行记录列表筛选。"""
+
+    job_code: str | None = None
+    tenant_id: int | None = None
+    status: ScheduledJobRunStatus | None = None
+    trigger_type: ScheduledJobTriggerType | None = None
+    trigger_request_id: str | None = None
+    keyword: str | None = None
+    started_from: UtcDateTime | None = None
+    started_to: UtcDateTime | None = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+
+
+class PaginatedScheduledJobRuns(BaseModel):
+    items: list[ScheduledJobRunRecord]
+    total: int
+    page: int
+    page_size: int

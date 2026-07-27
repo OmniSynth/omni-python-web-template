@@ -17,7 +17,7 @@ type AuditLogsPageBodyProps = {
 
 function auditMobileTitleColumnId(tab: AuditLogsPageState["tab"]): string {
   if (tab === "requests") return "path";
-  if (tab === "operations") return "summary";
+  if (tab === "operations" || tab === "job-runs") return "summary";
   return "http_path";
 }
 
@@ -36,6 +36,8 @@ export function AuditLogsPageBody({ page, mobileStorageKey }: AuditLogsPageBodyP
         page.level,
         page.tier,
         page.severity,
+        page.jobStatus,
+        page.jobTrigger,
         page.requestId,
       ].join("|"),
     [
@@ -46,6 +48,8 @@ export function AuditLogsPageBody({ page, mobileStorageKey }: AuditLogsPageBodyP
       page.level,
       page.tier,
       page.severity,
+      page.jobStatus,
+      page.jobTrigger,
       page.requestId,
     ],
   );
@@ -72,6 +76,7 @@ export function AuditLogsPageBody({ page, mobileStorageKey }: AuditLogsPageBodyP
           { value: "requests", label: "请求" },
           { value: "operations", label: "操作" },
           { value: "slow-sql", label: "慢 SQL" },
+          { value: "job-runs", label: "任务执行" },
         ]}
       />
 
@@ -82,6 +87,8 @@ export function AuditLogsPageBody({ page, mobileStorageKey }: AuditLogsPageBodyP
         level={page.level}
         tier={page.tier}
         severity={page.severity}
+        jobStatus={page.jobStatus}
+        jobTrigger={page.jobTrigger}
         requestId={page.requestId}
         hiddenFilterActiveCount={page.hiddenFilterActiveCount}
         exporting={page.exporting}
@@ -90,6 +97,8 @@ export function AuditLogsPageBody({ page, mobileStorageKey }: AuditLogsPageBodyP
         onLevelChange={(value) => page.applyFilterChange(page.setLevel, value)}
         onTierChange={(value) => page.applyFilterChange(page.setTier, value)}
         onSeverityChange={(value) => page.applyFilterChange(page.setSeverity, value)}
+        onJobStatusChange={(value) => page.applyFilterChange(page.setJobStatus, value)}
+        onJobTriggerChange={(value) => page.applyFilterChange(page.setJobTrigger, value)}
         onRequestIdChange={(value) => page.applyFilterChange(page.setRequestId, value)}
         onExport={page.handleExport}
       />

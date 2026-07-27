@@ -22,9 +22,24 @@ MySQL 表结构审计字段与时间（UTC `DATETIME(6)`）规范见 [AGENTS.md]
 
 设置 `OMNI_PROFILE=local` 或 `remote`，加载 `config/{profile}.toml`。
 
+## 系统开发参数表
+
+| 表 | 用途 |
+|---|---|
+| `t_sys_dev_param_group` | 系统开发参数分组（如「系统对象存储」） |
+| `t_sys_dev_param` | 系统开发参数 key-value（头像等系统级 OSS 配置） |
+
+由 `ensure_sys_schema` / `sync_rbac.py` 创建；密钥勿入库到配置文件，可经管理端或环境变量首次种子。
+
 ## 租户开发参数表（租户分表）
 
 | 基名 | 物理表 | 用途 |
 |---|---|---|
-| `dev_param_group` | `t_biz_dev_param_group_{tenant_id}` | 开发参数分组（名称、描述）；由 `sync_rbac.py` 或新建租户时开通 |
-| `dev_params` | `t_biz_dev_params_{tenant_id}` | 开发参数子表（key-value，无部门隔离） |
+| `dev_param_group` | `t_biz_dev_param_group_{tenant_id}` | 开发参数分组（名称、描述）；含「租户对象存储」 |
+| `dev_params` | `t_biz_dev_params_{tenant_id}` | 开发参数子表（key-value，无部门隔离；租户 OSS） |
+
+对象存储参数键：`oss.provider` / `oss.access_key` / `oss.secret_key` / `oss.domain` / `oss.upload_bucket_domain` / `oss.basic_path`。
+
+- 系统 `oss.basic_path`：可编辑，默认 `omni/static`（展示为 `/omni/static`）。
+- 租户 `oss.basic_path`：只读，恒为「系统基础路径 / 租户 ID」（如 `/omni/static/12`）；加载时忽略租户库内旧值。
+- `oss.domain`：仅 `http://` 或 `https://` + 主机（可选端口），规范化后恰好一个尾 `/`。

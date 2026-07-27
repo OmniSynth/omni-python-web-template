@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any
 
-# handler(manual, tenant_id)：系统任务 tenant_id 可为 None；租户任务须带租户。
-ScheduledJobHandler = Callable[[bool, int | None], Awaitable[str | None]]
-ScheduledJobScope = Literal["system", "tenant"]
+from omni_api.schemas.scheduled_job import JobRunOutcome, ScheduledJobScope
+
+# handler(manual, tenant_id, params)：系统任务 tenant_id 可为 None；租户任务须带租户。
+ScheduledJobHandler = Callable[
+    [bool, int | None, Mapping[str, Any] | None],
+    Awaitable[str | JobRunOutcome | None],
+]
 
 TRIGGER_ACCEPTED_MSG = "同步任务已开始执行"
 
@@ -27,7 +31,11 @@ class ScheduledJobDefinition:
         return self.scope == "tenant"
 
 
-async def _run_tenant_expiry_check(manual: bool, tenant_id: int | None) -> str | None:
+async def _run_tenant_expiry_check(
+    manual: bool,
+    tenant_id: int | None,
+    _params: Mapping[str, Any] | None = None,
+) -> str | None:
     from omni_api.services.tenant_expiry import sync_expired_tenant_session_flags
 
     _ = manual

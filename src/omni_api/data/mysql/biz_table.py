@@ -33,6 +33,9 @@ SYS_AUDIT_SLOW_SQL_LOGS = "t_sys_audit_slow_sql_logs"
 SYS_USER_TABLE_PREFERENCE = "t_sys_user_table_preference"
 SYS_SCHEDULED_JOB = "t_sys_scheduled_job"
 SYS_SCHEDULED_JOB_TENANT = "t_sys_scheduled_job_tenant"
+SYS_SCHEDULED_JOB_RUN = "t_sys_scheduled_job_run"
+SYS_DEV_PARAM_GROUP = "t_sys_dev_param_group"
+SYS_DEV_PARAM = "t_sys_dev_param"
 
 
 def biz_table(base: str, tenant_id: int) -> str:

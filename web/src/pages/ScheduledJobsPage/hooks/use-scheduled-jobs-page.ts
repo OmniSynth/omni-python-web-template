@@ -25,6 +25,7 @@ export function useScheduledJobsPage() {
   const [tenantSheetMode, setTenantSheetMode] = useState<TenantSheetMode>("trigger");
   const [tenantSheetError, setTenantSheetError] = useState("");
   const [tenantSheetSubmitting, setTenantSheetSubmitting] = useState(false);
+  const [historyJob, setHistoryJob] = useState<ScheduledJobRecord | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -91,6 +92,7 @@ export function useScheduledJobsPage() {
     onTrigger: actions.openExecute,
     onStart: actions.handleStart,
     onStop: actions.openStop,
+    onHistory: setHistoryJob,
     actionCode,
   });
 
@@ -124,6 +126,11 @@ export function useScheduledJobsPage() {
     tenantSheetSubmitting,
     handleConfirmTenantSheet: actions.handleConfirmTenantSheet,
     handleConfirmGlobalStop,
+    historyJob,
+    historyOpen: historyJob != null,
+    setHistoryOpen: (open: boolean) => {
+      if (!open) setHistoryJob(null);
+    },
     load,
   };
 }

@@ -6,10 +6,11 @@ import type {
   SqlSeverity,
   SqlTier,
 } from "@/types/audit";
+import type { ScheduledJobRunRecord, ScheduledJobRunStatus, ScheduledJobTriggerType } from "@/types/scheduled-job";
 
-export type Tab = "requests" | "operations" | "slow-sql";
+export type Tab = "requests" | "operations" | "slow-sql" | "job-runs";
 
-export type AuditTabRow = RequestLogRecord | OperationLogRecord | SlowSqlLogRecord;
+export type AuditTabRow = RequestLogRecord | OperationLogRecord | SlowSqlLogRecord | ScheduledJobRunRecord;
 
 export const AUDIT_PAGE_TITLE = "审计日志";
 
@@ -17,6 +18,7 @@ export const TAB_LABEL: Record<Tab, string> = {
   requests: "请求",
   operations: "操作",
   "slow-sql": "慢 SQL",
+  "job-runs": "任务执行",
 };
 
 export const LEVEL_LABEL: Record<AuditLevel, string> = {
@@ -55,3 +57,20 @@ export const AUDIT_SEVERITY_SELECT_OPTIONS = [
   { value: "slow", label: "慢" },
   { value: "critical", label: "严重" },
 ] as const;
+
+export const AUDIT_JOB_STATUS_SELECT_OPTIONS = [
+  { value: "all", label: "全部" },
+  { value: "success", label: "成功" },
+  { value: "failure", label: "失败" },
+  { value: "partial", label: "部分成功" },
+  { value: "skipped", label: "已跳过" },
+  { value: "running", label: "执行中" },
+] as const;
+
+export const AUDIT_JOB_TRIGGER_SELECT_OPTIONS = [
+  { value: "all", label: "全部" },
+  { value: "cron", label: "定时" },
+  { value: "manual", label: "手动" },
+] as const;
+
+export type { ScheduledJobRunStatus, ScheduledJobTriggerType };

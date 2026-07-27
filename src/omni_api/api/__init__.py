@@ -9,6 +9,7 @@ from omni_api.api.orgs import router as orgs_router
 from omni_api.api.permissions import router as permissions_router
 from omni_api.api.roles import router as roles_router
 from omni_api.api.scheduled_jobs import router as scheduled_jobs_router
+from omni_api.api.sys_dev_params import router as sys_dev_params_router
 from omni_api.api.table_preferences import router as table_preferences_router
 from omni_api.api.tenant_depts import router as tenant_depts_router
 from omni_api.api.tenant_roles import router as tenant_roles_router
@@ -28,6 +29,7 @@ __all__ = [
     "permissions_router",
     "roles_router",
     "scheduled_jobs_router",
+    "sys_dev_params_router",
     "table_preferences_router",
     "tenant_depts_router",
     "tenant_roles_router",

@@ -11,7 +11,10 @@ from omni_api.data.mysql.biz_table import (
     SYS_PERMISSIONS,
     SYS_ROLE_PERMISSIONS,
     SYS_ROLES,
+    SYS_DEV_PARAM,
+    SYS_DEV_PARAM_GROUP,
     SYS_SCHEDULED_JOB,
+    SYS_SCHEDULED_JOB_RUN,
     SYS_SCHEDULED_JOB_TENANT,
     SYS_TENANT,
     SYS_TENANT_SYSTEM_ROLE,
@@ -28,6 +31,7 @@ from omni_api.data.mysql.ddl_comment import (
     PERMISSION_KIND_ENUM,
     ROLE_TYPE_ENUM,
     cmt,
+    table_cmt,
 )
 
 
@@ -43,7 +47,7 @@ CREATE TABLE IF NOT EXISTS {SYS_ORGANIZATION} (
     {AUDIT_COLUMN_DEFS.strip()},
     UNIQUE KEY uq_sys_org_phone (phone),
     UNIQUE KEY uq_sys_org_credit_code (credit_code)
-);
+){table_cmt("机构")};
 """
 
 
@@ -57,7 +61,7 @@ CREATE TABLE IF NOT EXISTS {SYS_ORG_TENANT} (
     UNIQUE KEY uq_org_tenant (org_id, tenant_id),
     FOREIGN KEY (org_id) REFERENCES {SYS_ORGANIZATION}(id) ON DELETE CASCADE,
     FOREIGN KEY (tenant_id) REFERENCES {SYS_TENANT}(id) ON DELETE CASCADE
-);
+){table_cmt("机构租户关联")};
 """
 
 
@@ -79,7 +83,7 @@ CREATE TABLE IF NOT EXISTS {SYS_TENANT} (
     KEY idx_sys_tenant_region (region),
     KEY idx_sys_tenant_admin (admin_user_id),
     KEY idx_sys_tenant_expiry (expires_at, enabled)
-);
+){table_cmt("租户")};
 """
 
 
@@ -92,7 +96,7 @@ CREATE TABLE IF NOT EXISTS {SYS_TENANT_SYSTEM_ROLE} (
     {AUDIT_COLUMN_DEFS.strip()},
     UNIQUE KEY uq_tenant_system_role (tenant_id, role_code),
     FOREIGN KEY (tenant_id) REFERENCES {SYS_TENANT}(id) ON DELETE CASCADE
-);
+){table_cmt("租户预置系统角色")};
 """
 
 
@@ -111,7 +115,7 @@ CREATE TABLE IF NOT EXISTS {SYS_USER} (
     enabled TINYINT NOT NULL DEFAULT 1{ENABLED_FLAG},
     {AUDIT_COLUMN_DEFS.strip()},
     KEY idx_sys_user_enabled (enabled)
-);
+){table_cmt("用户")};
 """
 
 
@@ -129,7 +133,7 @@ CREATE TABLE IF NOT EXISTS {SYS_USER_TENANT} (
     UNIQUE KEY uq_user_tenant (user_id, tenant_id),
     FOREIGN KEY (user_id) REFERENCES {SYS_USER}(id) ON DELETE CASCADE,
     FOREIGN KEY (tenant_id) REFERENCES {SYS_TENANT}(id) ON DELETE CASCADE
-);
+){table_cmt("用户租户成员")};
 """
 
 
@@ -143,7 +147,7 @@ CREATE TABLE IF NOT EXISTS {SYS_ROLES} (
     role_type VARCHAR(16) NOT NULL DEFAULT 'tenant'{cmt(ROLE_TYPE_ENUM)},
     {AUDIT_COLUMN_DEFS.strip()},
     UNIQUE KEY uq_sys_role_code (code)
-);
+){table_cmt("系统角色")};
 
 CREATE TABLE IF NOT EXISTS {SYS_ROLE_PERMISSIONS} (
     id BIGINT AUTO_INCREMENT PRIMARY KEY{ID_PK},
@@ -152,7 +156,7 @@ CREATE TABLE IF NOT EXISTS {SYS_ROLE_PERMISSIONS} (
     {AUDIT_COLUMN_DEFS.strip()},
     UNIQUE KEY uq_sys_role_permission (role_id, permission_code),
     FOREIGN KEY (role_id) REFERENCES {SYS_ROLES}(id) ON DELETE CASCADE
-);
+){table_cmt("系统角色权限")};
 
 CREATE TABLE IF NOT EXISTS {SYS_USER_ROLES} (
     id BIGINT AUTO_INCREMENT PRIMARY KEY{ID_PK},
@@ -162,7 +166,7 @@ CREATE TABLE IF NOT EXISTS {SYS_USER_ROLES} (
     UNIQUE KEY uq_sys_user_role (user_id, role_id),
     FOREIGN KEY (user_id) REFERENCES {SYS_USER}(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES {SYS_ROLES}(id) ON DELETE CASCADE
-);
+){table_cmt("系统用户角色")};
 """
 
 
@@ -185,7 +189,7 @@ CREATE TABLE IF NOT EXISTS {SYS_PERMISSIONS} (
     {AUDIT_COLUMN_DEFS.strip()},
     INDEX idx_parent_sort (parent_id, sort_order),
     FOREIGN KEY (parent_id) REFERENCES {SYS_PERMISSIONS}(id) ON DELETE RESTRICT
-);
+){table_cmt("权限")};
 
 CREATE TABLE IF NOT EXISTS {SYS_PERMISSION_API_BINDINGS} (
     id BIGINT AUTO_INCREMENT PRIMARY KEY{ID_PK},
@@ -195,7 +199,7 @@ CREATE TABLE IF NOT EXISTS {SYS_PERMISSION_API_BINDINGS} (
     UNIQUE KEY uq_perm_api (permission_id, api_permission_id),
     FOREIGN KEY (permission_id) REFERENCES {SYS_PERMISSIONS}(id) ON DELETE CASCADE,
     FOREIGN KEY (api_permission_id) REFERENCES {SYS_PERMISSIONS}(id) ON DELETE CASCADE
-);
+){table_cmt("权限API绑定")};
 
 CREATE TABLE IF NOT EXISTS {SYS_PERMISSION_API_ROUTES} (
     id BIGINT AUTO_INCREMENT PRIMARY KEY{ID_PK},
@@ -205,7 +209,7 @@ CREATE TABLE IF NOT EXISTS {SYS_PERMISSION_API_ROUTES} (
     {AUDIT_COLUMN_DEFS.strip()},
     UNIQUE KEY uq_perm_route (permission_id, api_method, api_path_pattern),
     FOREIGN KEY (permission_id) REFERENCES {SYS_PERMISSIONS}(id) ON DELETE CASCADE
-);
+){table_cmt("权限API路由")};
 """
 
 
@@ -220,7 +224,7 @@ CREATE TABLE IF NOT EXISTS {SYS_USER_TABLE_PREFERENCE} (
     {AUDIT_COLUMN_DEFS.strip()},
     UNIQUE KEY uq_user_table_pref (user_id, page_key, table_key),
     FOREIGN KEY (user_id) REFERENCES {SYS_USER}(id) ON DELETE CASCADE
-);
+){table_cmt("用户表格偏好")};
 """
 
 
@@ -241,7 +245,7 @@ CREATE TABLE IF NOT EXISTS {SYS_SCHEDULED_JOB} (
     {AUDIT_COLUMN_DEFS.strip()},
     KEY idx_scheduled_job_enabled (enabled),
     KEY idx_scheduled_job_scope (scope)
-);
+){table_cmt("定时任务")};
 """
 
 
@@ -260,7 +264,65 @@ CREATE TABLE IF NOT EXISTS {SYS_SCHEDULED_JOB_TENANT} (
     KEY idx_scheduled_job_tenant_tid (tenant_id),
     CONSTRAINT fk_scheduled_job_tenant_job FOREIGN KEY (job_code) REFERENCES {SYS_SCHEDULED_JOB} (code),
     CONSTRAINT fk_scheduled_job_tenant_tenant FOREIGN KEY (tenant_id) REFERENCES {SYS_TENANT} (id)
-);
+){table_cmt("定时任务租户调度")};
+"""
+
+
+def create_scheduled_job_run_sql() -> str:
+    return f"""
+CREATE TABLE IF NOT EXISTS {SYS_SCHEDULED_JOB_RUN} (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY{ID_PK},
+    run_id VARCHAR(36) NOT NULL{cmt("执行追踪UUID")},
+    job_code VARCHAR(64) NOT NULL{cmt("任务编码")},
+    scope VARCHAR(16) NOT NULL{cmt("任务范围快照：system系统 tenant租户")},
+    tenant_id BIGINT NULL{cmt("租户ID；系统任务为空")},
+    trigger_type VARCHAR(16) NOT NULL{cmt("触发方式：cron定时 manual手动")},
+    actor_user_id BIGINT NULL{cmt("手动触发操作人用户ID")},
+    actor_username VARCHAR(128) NULL{cmt("手动触发操作人用户名")},
+    trigger_request_id VARCHAR(36) NULL{cmt("手动触发关联请求追踪ID")},
+    params_json JSON NULL{cmt("入参关节JSON")},
+    context_json JSON NULL{cmt("复现环境JSON")},
+    status VARCHAR(16) NOT NULL{cmt("状态：running执行中 success成功 failure失败 partial部分成功 skipped跳过")},
+    summary VARCHAR(2048) NOT NULL DEFAULT ''{cmt("业务可读摘要")},
+    result_json JSON NULL{cmt("结构化结果关节JSON")},
+    error_text VARCHAR(4096) NULL{cmt("错误详情")},
+    started_at DATETIME(6) NOT NULL{cmt("开始时间(UTC)")},
+    finished_at DATETIME(6) NULL{cmt("结束时间(UTC)")},
+    duration_ms INT NULL{cmt("耗时(毫秒)")},
+    UNIQUE KEY uq_scheduled_job_run_id (run_id),
+    KEY idx_job_run_code_started (job_code, started_at),
+    KEY idx_job_run_tenant_started (tenant_id, started_at),
+    KEY idx_job_run_status_started (status, started_at),
+    KEY idx_job_run_started (started_at)
+){table_cmt("定时任务执行记录")};
+"""
+
+
+def create_sys_dev_param_group_sql() -> str:
+    return f"""
+CREATE TABLE IF NOT EXISTS {SYS_DEV_PARAM_GROUP} (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY{ID_PK},
+    name VARCHAR(64) NOT NULL{cmt("分组名称")},
+    description VARCHAR(300) NOT NULL DEFAULT ''{cmt("分组描述")},
+    {AUDIT_COLUMN_DEFS.strip()},
+    UNIQUE KEY uq_sys_dev_param_group_name (name)
+){table_cmt("系统开发参数分组")};
+"""
+
+
+def create_sys_dev_param_sql() -> str:
+    return f"""
+CREATE TABLE IF NOT EXISTS {SYS_DEV_PARAM} (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY{ID_PK},
+    group_id BIGINT NOT NULL{cmt("分组ID")},
+    param_key VARCHAR(64) NOT NULL{cmt("参数键")},
+    param_value TEXT NOT NULL{cmt("参数值")},
+    remark VARCHAR(512) NOT NULL DEFAULT ''{cmt("备注")},
+    {AUDIT_COLUMN_DEFS.strip()},
+    UNIQUE KEY uq_sys_dev_param_key (param_key),
+    KEY idx_sys_dev_param_group (group_id),
+    FOREIGN KEY (group_id) REFERENCES {SYS_DEV_PARAM_GROUP}(id)
+){table_cmt("系统开发参数")};
 """
 
 
@@ -278,5 +340,8 @@ def all_sys_ddl_statements() -> list[str]:
         + create_user_table_preference_sql()
         + create_scheduled_job_sql()
         + create_scheduled_job_tenant_sql()
+        + create_scheduled_job_run_sql()
+        + create_sys_dev_param_group_sql()
+        + create_sys_dev_param_sql()
     )
     return [s.strip() for s in raw.split(";") if s.strip()]

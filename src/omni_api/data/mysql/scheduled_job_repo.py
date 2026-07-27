@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from omni_api.data.mysql.audit import audit_insert_params, audit_update_params
 from omni_api.data.mysql.biz_table import SYS_SCHEDULED_JOB, SYS_SCHEDULED_JOB_TENANT
 from omni_api.data.mysql.list_sort import SortOrder, build_order_clause
+from omni_api.data.mysql.scheduled_job_run_repo import ScheduledJobRunRepo
 from omni_api.data.mysql.utc import utc_now
 from omni_api.schemas.scheduled_job import (
     ScheduledJobRecord,
@@ -82,6 +83,7 @@ class ScheduledJobRepo:
         self._engine = engine
 
     async def ensure_schema(self) -> None:
+        await ScheduledJobRunRepo(self._engine).ensure_schema()
         await self._seed_definitions()
 
     async def _seed_definitions(self) -> None:

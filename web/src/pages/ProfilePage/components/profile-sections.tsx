@@ -13,8 +13,28 @@ export function ProfileBasicSection({ page }: { page: ProfilePageState }) {
       <h2 className="text-sm font-medium text-foreground">基本资料</h2>
       <div className="flex items-center gap-4">
         <ProfileAvatar displayName={page.displayName} username={page.username} avatarUrl={page.avatarUrl} />
-        <div className="min-w-0 text-sm text-muted-foreground">
+        <div className="min-w-0 space-y-2 text-sm text-muted-foreground">
           <p>用户名：{page.username || "—"}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              id="profile-avatar-file"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="max-w-xs cursor-pointer"
+              disabled={page.uploadingAvatar}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) void page.handleUploadAvatar(file);
+              }}
+            />
+            {page.uploadingAvatar ? <span className="text-xs">上传中…</span> : null}
+          </div>
+          {page.fieldErrors.avatarUrl ? (
+            <p className="text-xs text-destructive">{page.fieldErrors.avatarUrl}</p>
+          ) : (
+            <p className="text-xs">支持 JPEG / PNG / WebP / GIF，最大 2MB；上传后立即生效。</p>
+          )}
         </div>
       </div>
       <FormField label="昵称" htmlFor="profile-display-name" required error={page.fieldErrors.displayName}>
@@ -28,18 +48,6 @@ export function ProfileBasicSection({ page }: { page: ProfilePageState }) {
           }}
         />
       </FormField>
-      <FormField label="头像链接" htmlFor="profile-avatar-url" error={page.fieldErrors.avatarUrl}>
-        <Input
-          id="profile-avatar-url"
-          value={page.avatarUrl}
-          placeholder="https://..."
-          onChange={(e) => {
-            page.setAvatarUrl(e.target.value);
-            page.clearFieldError("avatarUrl");
-          }}
-        />
-      </FormField>
-      <p className="text-xs text-muted-foreground">头像须为可访问的 http(s) 图片地址；留空则使用昵称首字色块。</p>
       <div>
         <Button type="button" disabled={page.savingProfile} onClick={() => void page.handleSaveProfile()}>
           保存资料

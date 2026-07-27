@@ -13,6 +13,7 @@ import type {
   SqlSeverity,
   SqlTier,
 } from "@/types/audit";
+import type { ScheduledJobRunRecord, ScheduledJobRunStatus, ScheduledJobTriggerType } from "@/types/scheduled-job";
 import type { TableColumnDef, TableSortPreference } from "@/types/table-preference";
 import type { AuditTabRow, Tab } from "../types";
 
@@ -23,6 +24,8 @@ export function useAuditLogsFilters() {
   const [level, setLevel] = useState<AuditLevel | "">("");
   const [tier, setTier] = useState<SqlTier | "">("");
   const [severity, setSeverity] = useState<SqlSeverity | "">("");
+  const [jobStatus, setJobStatus] = useState<ScheduledJobRunStatus | "">("");
+  const [jobTrigger, setJobTrigger] = useState<ScheduledJobTriggerType | "">("");
   const [requestId, setRequestId] = useState("");
   const [page, setPage] = useState(1);
   const { pageSize, setPageSize } = useGlobalPageSize();
@@ -34,12 +37,15 @@ export function useAuditLogsFilters() {
     if (tab === "slow-sql") {
       if (tier) count += 1;
       if (severity) count += 1;
+    } else if (tab === "job-runs") {
+      if (jobStatus) count += 1;
+      if (jobTrigger) count += 1;
     } else if (level) {
       count += 1;
     }
     if (requestId.trim()) count += 1;
     return count;
-  }, [dateRange.from, dateRange.to, keyword, level, requestId, severity, tab, tier]);
+  }, [dateRange.from, dateRange.to, jobStatus, jobTrigger, keyword, level, requestId, severity, tab, tier]);
 
   return {
     tab,
@@ -54,6 +60,10 @@ export function useAuditLogsFilters() {
     setTier,
     severity,
     setSeverity,
+    jobStatus,
+    setJobStatus,
+    jobTrigger,
+    setJobTrigger,
     requestId,
     setRequestId,
     page,
@@ -69,6 +79,7 @@ export function useAuditLogsDetailState() {
   const [requestDetail, setRequestDetail] = useState<RequestLogRecord | null>(null);
   const [operationDetail, setOperationDetail] = useState<OperationLogRecord | null>(null);
   const [slowSqlDetail, setSlowSqlDetail] = useState<SlowSqlLogRecord | null>(null);
+  const [jobRunDetail, setJobRunDetail] = useState<ScheduledJobRunRecord | null>(null);
   const [exporting, setExporting] = useState(false);
 
   return {
@@ -80,9 +91,24 @@ export function useAuditLogsDetailState() {
     setOperationDetail,
     slowSqlDetail,
     setSlowSqlDetail,
+    jobRunDetail,
+    setJobRunDetail,
     exporting,
     setExporting,
   };
+}
+
+function activeRowsForTab(
+  tab: Tab,
+  requests: RequestLogRecord[],
+  operations: OperationLogRecord[],
+  slowSqlLogs: SlowSqlLogRecord[],
+  jobRuns: ScheduledJobRunRecord[],
+): AuditTabRow[] {
+  if (tab === "requests") return requests;
+  if (tab === "operations") return operations;
+  if (tab === "job-runs") return jobRuns;
+  return slowSqlLogs;
 }
 
 export function useAuditLogsData({
@@ -95,6 +121,8 @@ export function useAuditLogsData({
   level,
   tier,
   severity,
+  jobStatus,
+  jobTrigger,
   requestId,
   tableSort,
   activeColumns,
@@ -108,6 +136,8 @@ export function useAuditLogsData({
   level: AuditLevel | "";
   tier: SqlTier | "";
   severity: SqlSeverity | "";
+  jobStatus: ScheduledJobRunStatus | "";
+  jobTrigger: ScheduledJobTriggerType | "";
   requestId: string;
   tableSort: TableSortPreference | null;
   activeColumns: TableColumnDef<AuditTabRow>[];
@@ -117,21 +147,39 @@ export function useAuditLogsData({
   const [requests, setRequests] = useState<RequestLogRecord[]>([]);
   const [operations, setOperations] = useState<OperationLogRecord[]>([]);
   const [slowSqlLogs, setSlowSqlLogs] = useState<SlowSqlLogRecord[]>([]);
+  const [jobRuns, setJobRuns] = useState<ScheduledJobRunRecord[]>([]);
   const [total, setTotal] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      const from = dateOnlyToApiUtc(dateRange.from, timezone, "start");
+      const to = dateOnlyToApiUtc(dateRange.to, timezone, "end");
+      const sortParams = sortKeyFromPreference(tableSort, activeColumns);
+      if (tab === "job-runs") {
+        const res = await api.audit.listScheduledJobRuns({
+          page,
+          page_size: pageSize,
+          from,
+          to,
+          keyword: keyword || undefined,
+          status: jobStatus || undefined,
+          trigger_type: jobTrigger || undefined,
+          request_id: requestId || undefined,
+        });
+        setJobRuns(res.items);
+        setTotal(res.total);
+        return;
+      }
       const baseParams: Record<string, string | number | undefined> = {
         page,
         page_size: pageSize,
-        from: dateOnlyToApiUtc(dateRange.from, timezone, "start"),
-        to: dateOnlyToApiUtc(dateRange.to, timezone, "end"),
+        from,
+        to,
         keyword: keyword || undefined,
         level: level || undefined,
         request_id: requestId || undefined,
       };
-      const sortParams = sortKeyFromPreference(tableSort, activeColumns);
       if (tab === "requests") {
         const res = await api.audit.listRequests({ ...baseParams, ...sortParams });
         setRequests(res.items);
@@ -164,6 +212,8 @@ export function useAuditLogsData({
     level,
     tier,
     severity,
+    jobStatus,
+    jobTrigger,
     requestId,
     tableSort,
     activeColumns,
@@ -175,7 +225,7 @@ export function useAuditLogsData({
       .catch((e: Error) => setPageLoadError(e.message));
   }, [load]);
 
-  const activeRows: AuditTabRow[] = tab === "requests" ? requests : tab === "operations" ? operations : slowSqlLogs;
+  const activeRows = activeRowsForTab(tab, requests, operations, slowSqlLogs, jobRuns);
 
   return { pageLoadError, loading, activeRows, total };
 }

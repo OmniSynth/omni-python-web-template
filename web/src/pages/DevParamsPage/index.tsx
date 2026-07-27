@@ -8,24 +8,26 @@ import { mobileClientInfiniteScroll, mobileTableProps } from "@/components/table
 import type { DevParamGroupSummary } from "@/types/dev-param";
 import { DevParamGroupDetailSheet } from "./components/dev-param-group-detail-sheet";
 import { DevParamGroupEditSheet } from "./components/dev-param-group-edit-sheet";
-import { useDevParamsPage } from "./hooks/use-dev-params-page";
+import { type DevParamsPageOptions, useDevParamsPage } from "./hooks/use-dev-params-page";
 
 const MOBILE_TABLE = mobileTableProps<DevParamGroupSummary>({
   titleColumnId: "name",
   detailTitle: (group) => group.name,
 });
 
-export function DevParamsPage() {
-  const page = useDevParamsPage();
+export function DevParamsPage(options: DevParamsPageOptions = {}) {
+  const page = useDevParamsPage(options);
   const pagination = page.devParamTable.pagination;
 
   return (
     <Page>
       <PageHeader
-        title="开发参数"
+        title={page.pageTitle}
         action={
           <TableHeaderActions
-            settings={<TableSettingsButton title="开发参数" onClick={() => page.devParamTable.setSettingsOpen(true)} />}
+            settings={
+              <TableSettingsButton title={page.pageTitle} onClick={() => page.devParamTable.setSettingsOpen(true)} />
+            }
             mobileLayoutToggle
           />
         }
@@ -56,7 +58,7 @@ export function DevParamsPage() {
         />
       </PageBody>
 
-      <Can permission="dev_param.update">
+      <Can permission={page.updatePermission}>
         <DevParamGroupEditSheet
           open={page.groupEditOpen}
           onOpenChange={page.setGroupEditOpen}
@@ -80,7 +82,7 @@ export function DevParamsPage() {
       />
 
       <TableColumnSettingsSheet
-        title="开发参数"
+        title={page.pageTitle}
         open={page.devParamTable.settingsOpen}
         onOpenChange={page.devParamTable.setSettingsOpen}
         config={page.devParamTable.config}

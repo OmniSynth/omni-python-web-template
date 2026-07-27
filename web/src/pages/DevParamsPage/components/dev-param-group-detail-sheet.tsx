@@ -7,7 +7,11 @@ import { DEFAULT_ROW_HEIGHT, resolveColumns, type TableColumnDef } from "@/types
 
 function formatParamValue(item: DevParamItemView): string {
   if (item.field_type === "password") {
-    return item.param_value ? "••••••" : "—";
+    return item.configured ? "已配置" : "—";
+  }
+  if (item.field_type === "select") {
+    const hit = item.select_options.find((opt) => opt.value === item.param_value);
+    return hit?.label || item.param_value || "—";
   }
   return item.param_value || "—";
 }

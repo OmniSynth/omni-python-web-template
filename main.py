@@ -23,6 +23,7 @@ from omni_api.api import (
     permissions_router,
     roles_router,
     scheduled_jobs_router,
+    sys_dev_params_router,
     table_preferences_router,
     tenant_depts_router,
     tenant_roles_router,
@@ -126,6 +127,7 @@ def create_app(*, api: bool = True, web: bool = True) -> FastAPI:
         app.include_router(tenant_scheduled_jobs_router)
         app.include_router(depts_router)
         app.include_router(dev_params_router)
+        app.include_router(sys_dev_params_router)
     if web:
         _mount_spa(app)
     return app

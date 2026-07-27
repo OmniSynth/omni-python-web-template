@@ -88,7 +88,7 @@ uv run scripts/export_audit_logs.py --retention --purge
 
 ## Web
 
-路径 `/audit`（需 `menu.audit`）；Tab：请求 / 操作 / **慢 SQL**，支持筛选与详情抽屉。慢 SQL 表格偏好键 `audit.slow-sql`。
+路径 `/audit`（需 `menu.audit`）；Tab：请求 / 操作 / 慢 SQL / **任务执行**，支持筛选与详情抽屉。表格偏好键：`audit.requests` / `audit.operations` / `audit.slow-sql` / `audit.job-runs`。任务执行数据来自 `t_sys_scheduled_job_run`，不纳入本页「导出归档」三轨 JSONL。
 
 **全局 UI 参考**：多 Tab（`PageTabBar`）+ 筛选区（`PageFilterToolbar` + `DateRangeFilterField`）以本页为准，详见 [datetime.md](datetime.md)。
 
@@ -106,6 +106,8 @@ uv run scripts/export_audit_logs.py --retention --purge
 | GET | `/api/v1/audit/operations/{id}` | `system.audit.read` |
 | GET | `/api/v1/audit/slow-sql` | `system.audit.read` |
 | GET | `/api/v1/audit/slow-sql/{id}` | `system.audit.read` |
+| GET | `/api/v1/audit/scheduled-job-runs` | `system.audit.read` |
+| GET | `/api/v1/audit/scheduled-job-runs/{run_id}` | `system.audit.read` |
 | POST | `/api/v1/audit/export` | `system.audit.export` |
 
 ## 合规自检

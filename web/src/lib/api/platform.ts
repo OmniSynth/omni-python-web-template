@@ -28,6 +28,7 @@ import type {
   UserRecord,
   UserTenantConfigItem,
 } from "@/types/auth";
+import type { PaginatedScheduledJobRuns, ScheduledJobRunRecord } from "@/types/scheduled-job";
 
 export const platformApi = {
   auth: {
@@ -198,6 +199,10 @@ export const platformApi = {
     listSlowSql: (params: Record<string, string | number | undefined>) =>
       json<PaginatedSlowSqlLogs>(`/api/v1/audit/slow-sql?${buildQuery(params)}`),
     getSlowSql: (id: number) => json<SlowSqlLogRecord>(`/api/v1/audit/slow-sql/${id}`),
+    listScheduledJobRuns: (params: Record<string, string | number | undefined>) =>
+      json<PaginatedScheduledJobRuns>(`/api/v1/audit/scheduled-job-runs?${buildQuery(params)}`),
+    getScheduledJobRun: (runId: string) =>
+      json<ScheduledJobRunRecord>(`/api/v1/audit/scheduled-job-runs/${encodeURIComponent(runId)}`),
     export: (body: {
       from: string;
       to: string;

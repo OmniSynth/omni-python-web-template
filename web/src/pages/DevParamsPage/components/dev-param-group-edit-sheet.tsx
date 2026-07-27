@@ -11,8 +11,11 @@ export type DevParamDraft = {
   remark: string;
   label: string;
   description: string;
+  placeholder: string;
   field_type: DevParamItemView["field_type"];
   editable: boolean;
+  configured: boolean;
+  select_options: DevParamItemView["select_options"];
 };
 
 const compactInputClass = "h-9 rounded-lg px-2.5 py-1 text-sm shadow-none hover:bg-muted/65 focus-visible:ring-2";
@@ -95,6 +98,10 @@ export function DevParamGroupEditSheet({
                             htmlId={`dev-param-value-${item.param_key}`}
                             fieldType={item.field_type}
                             value={item.param_value}
+                            configured={item.configured}
+                            selectOptions={item.select_options}
+                            placeholder={item.placeholder}
+                            readOnly={!item.editable}
                             compact
                             onChange={(value) => onParamValueChange(item.param_key, value)}
                           />

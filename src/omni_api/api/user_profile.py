@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from omni_api.api.deps import get_current_user, get_session_token
 from omni_api.data.mysql.connection import mysql_engine
@@ -19,6 +19,7 @@ from omni_api.schemas.user_profile import (
 from omni_api.services.audit_service import AuditService
 from omni_api.services.auth_credentials import verify_password
 from omni_api.services.auth_service import hash_password
+from omni_api.services.avatar_upload_service import AvatarUploadService
 from omni_api.services.session_service import SessionService
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,45 @@ async def update_my_profile(
     await AuditService().record_operation(
         category="user",
         action="profile_update",
+        level="business",
+        actor_id=actor.id,
+        actor_username=actor.username,
+        resource_type="user",
+        resource_id=str(actor.id),
+        before=before,
+        after=profile,
+        username=actor.username,
+    )
+    return profile
+
+
+@router.post("/avatar", response_model=UserProfile)
+async def upload_my_avatar(
+    file: UploadFile = File(...),
+    actor: UserRecord = Depends(get_current_user),
+    token: str | None = Depends(get_session_token),
+) -> UserProfile:
+    before = await _repo().get_profile(actor.id)
+    data = await file.read()
+    try:
+        profile = await AvatarUploadService(mysql_engine()).upload(
+            actor.id,
+            filename=file.filename or "avatar.bin",
+            content_type=file.content_type,
+            data=data,
+            actor_id=actor.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except NotImplementedError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if token:
+        await SessionService().patch_profile(
+            token, profile.display_name, profile.avatar_url
+        )
+    await AuditService().record_operation(
+        category="user",
+        action="avatar_upload",
         level="business",
         actor_id=actor.id,
         actor_username=actor.username,
