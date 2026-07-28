@@ -49,7 +49,7 @@ def _reject_cross_catalog_permissions(role_type: str, permissions: list[str]) ->
     if invalid:
         raise HTTPException(
             status_code=400,
-            detail="权限与角色类型不匹配：系统角色仅可绑定系统/平台管理目录，租户角色仅可绑定训练/设置/订单目录",
+            detail="权限与角色类型不匹配：系统角色仅可绑定系统/平台管理目录，租户角色仅可绑定租户业务目录",
         )
 
 

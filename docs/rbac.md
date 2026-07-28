@@ -104,7 +104,7 @@ Web 用户/角色/部门页按路由分流：`/users`、`/roles`、`/depts` 走�
 | 角色类型 | 可绑定目录 |
 |---|---|
 | 系统（`role_type=system`） | `catalog.system`（系统配置）、`catalog.platform`（平台管理） |
-| 租户（`role_type=tenant`） | `catalog.tenant`（设置） |
+| 租户（`role_type=tenant`） | 种子中非系统根目录（当前为 `catalog.tenant` 设置；新增业务 catalog 时由 `permission_catalog_scope` 自动纳入） |
 
 侧栏目录默认排序（种子 `sort_order`，`sync_rbac` 会同步目录名与排序）：**设置 → 系统配置 → 平台管理**。业务域若新增根目录，应插在「设置」之前或之间，并显式声明种子 `sort_order`（勿依赖插入时追加到末尾）。
 
