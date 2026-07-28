@@ -93,7 +93,7 @@ export function useOrgsPageActions({
           enabled,
         });
         if (result.admin_credentials) {
-          setCredentials(result.admin_credentials);
+          setCredentials({ ...result.admin_credentials, site_name: name.trim() });
         }
       }
       setSheetOpen(false);

@@ -166,8 +166,12 @@ export async function registerAuthSession(
 ): Promise<RegisterResult> {
   const res = await api.auth.register(body);
   if (res.admin_credentials?.username && res.admin_credentials.password) {
-    // 须在写入会话前暂存，避免 user 更新触发跳转后丢失弹窗时机
-    stashPendingRegisterCredentials(res.admin_credentials);
+    // 须在写入会话前暂存，避免 user 更新触发跳转后丢失弹窗时机；site_name 用注册机构名，勿依赖 document.title
+    stashPendingRegisterCredentials({
+      username: res.admin_credentials.username,
+      password: res.admin_credentials.password,
+      site_name: body.name.trim(),
+    });
   }
   const login = await applyLoginResponse(set, get, res);
   return {

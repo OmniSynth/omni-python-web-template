@@ -118,6 +118,7 @@ export function OrgsPage() {
         title="机构与租户已开通"
         username={page.credentials?.username ?? ""}
         password={page.credentials?.password ?? ""}
+        siteName={page.credentials?.site_name}
       />
     </Page>
   );

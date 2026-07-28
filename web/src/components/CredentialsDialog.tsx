@@ -11,12 +11,17 @@ type CredentialsDialogProps = {
   title: string;
   username: string;
   password: string;
+  /** 凭据文案中的网站/机构名称 */
+  siteName?: string;
 };
 
-export function CredentialsDialog({ open, onOpenChange, title, username, password }: CredentialsDialogProps) {
+export function CredentialsDialog({ open, onOpenChange, title, username, password, siteName }: CredentialsDialogProps) {
   const [copyHint, setCopyHint] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const copyText = useMemo(() => formatUserCredentialsCopy(username, password), [username, password]);
+  const copyText = useMemo(
+    () => formatUserCredentialsCopy(username, password, siteName),
+    [username, password, siteName],
+  );
 
   async function handleCopy() {
     const ok = await copyToClipboard(copyText, inputRef.current);

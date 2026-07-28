@@ -172,6 +172,8 @@ export interface TenantAdminUserOption {
 export interface ProvisionCredentials {
   username: string;
   password: string;
+  /** 凭据「网站」字段；开户/注册时写入，避免前端误用旧标签页标题 */
+  site_name?: string;
 }
 
 export interface RegisterResponse extends LoginResponse {

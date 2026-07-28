@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { CredentialsDialog } from "@/components/CredentialsDialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { clearPendingRegisterCredentials, peekPendingRegisterCredentials } from "@/lib/pending-register-credentials";
-import type { ProvisionCredentials } from "@/types/auth";
+import {
+  clearPendingRegisterCredentials,
+  type PendingRegisterCredentials,
+  peekPendingRegisterCredentials,
+} from "@/lib/pending-register-credentials";
 
 const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register"]);
 
@@ -11,7 +14,7 @@ const PUBLIC_AUTH_PATHS = new Set(["/", "/login", "/register"]);
 export function PendingRegisterCredentialsHost() {
   const { user, loading, refreshing } = useAuth();
   const location = useLocation();
-  const [credentials, setCredentials] = useState<ProvisionCredentials | null>(null);
+  const [credentials, setCredentials] = useState<PendingRegisterCredentials | null>(null);
 
   useEffect(() => {
     if (credentials) return;
@@ -40,6 +43,7 @@ export function PendingRegisterCredentialsHost() {
       title="注册成功"
       username={credentials?.username ?? ""}
       password={credentials?.password ?? ""}
+      siteName={credentials?.site_name || undefined}
     />
   );
 }

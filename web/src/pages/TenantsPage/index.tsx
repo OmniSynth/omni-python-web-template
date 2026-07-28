@@ -104,6 +104,7 @@ export function TenantsPage() {
         title="租户已开通"
         username={page.credentials?.username ?? ""}
         password={page.credentials?.password ?? ""}
+        siteName={page.credentials?.site_name}
       />
     </Page>
   );

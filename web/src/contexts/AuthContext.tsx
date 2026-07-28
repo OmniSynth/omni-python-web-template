@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, boundTenants, tenantDisplayCache],
   );
 
-  const currentTenant = useMemo(() => resolveBrandTenantDisplay(sessionTenant), [sessionTenant]);
+  const currentTenant = useMemo(() => resolveBrandTenantDisplay(sessionTenant, user), [sessionTenant, user]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 用户或租户列表变化时同步顶栏品牌展示
   useEffect(() => {

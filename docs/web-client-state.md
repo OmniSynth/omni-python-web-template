@@ -81,7 +81,7 @@ IndexedDB 在 Safari 隐私模式或存储受限时可能不可用；`openAppDb(
 | 切换租户 | `syncTenantDisplayFromBoundTenants` 更新 |
 | 登出 | 保留上次租户名（白名单不清理） |
 
-顶栏与标签页通过 `resolveBrandTenantDisplay()` 合并会话租户与设备缓存。
+顶栏与标签页通过 `resolveBrandTenantDisplay(sessionTenant, user)` 合并会话租户与设备缓存：仅当设备缓存 `tenant_id` 与当前会话一致时才回退，避免注册后短暂显示上一家企业名。注册/开户凭据文案的「网站」字段须显式传入机构或租户名（`site_name`），勿依赖 `document.title`。
 
 ## 设备级导航树
 

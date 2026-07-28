@@ -4,17 +4,25 @@ import type { ProvisionCredentials } from "@/types/auth";
 
 const STORAGE_KEY = "omni-pending-register-credentials";
 
-export function stashPendingRegisterCredentials(credentials: ProvisionCredentials): void {
+export type PendingRegisterCredentials = ProvisionCredentials & {
+  site_name: string;
+};
+
+export function stashPendingRegisterCredentials(credentials: PendingRegisterCredentials): void {
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify(credentials));
 }
 
-export function peekPendingRegisterCredentials(): ProvisionCredentials | null {
+export function peekPendingRegisterCredentials(): PendingRegisterCredentials | null {
   const raw = sessionStorage.getItem(STORAGE_KEY);
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as ProvisionCredentials;
+    const parsed = JSON.parse(raw) as PendingRegisterCredentials;
     if (!parsed?.username || !parsed?.password) return null;
-    return parsed;
+    return {
+      username: parsed.username,
+      password: parsed.password,
+      site_name: typeof parsed.site_name === "string" ? parsed.site_name.trim() : "",
+    };
   } catch {
     return null;
   }

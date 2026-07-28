@@ -41,10 +41,18 @@ export function readCachedTenantDisplayForUser(
   return null;
 }
 
-/** 顶栏/标签页展示：会话租户优先，回退设备级缓存（登出不闪烁）。 */
-export function resolveBrandTenantDisplay(sessionTenant: CurrentTenantDisplay | null): CurrentTenantDisplay | null {
+/** 顶栏/标签页展示：会话租户优先；设备缓存仅在 tenant_id 一致时回退，避免注册后短暂显示上一家企业名。 */
+export function resolveBrandTenantDisplay(
+  sessionTenant: CurrentTenantDisplay | null,
+  user: AuthUser | null = null,
+): CurrentTenantDisplay | null {
   if (sessionTenant?.name?.trim()) {
     return sessionTenant;
   }
-  return readDeviceTenantDisplay();
+  const device = readDeviceTenantDisplay();
+  if (!device) return null;
+  if (user?.tenant_id != null && !user.need_tenant_select) {
+    return device.tenant_id === user.tenant_id ? device : null;
+  }
+  return device;
 }
