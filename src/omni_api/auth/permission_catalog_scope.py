@@ -5,10 +5,21 @@ from __future__ import annotations
 from omni_api.auth.permission_seed import PERMISSION_SEEDS
 from omni_api.schemas.sys_role_type import ROLE_TYPE_SYSTEM, RoleType
 
-# 系统角色可绑定的根目录
+# 系统角色可绑定的根目录（平台侧）
 SYSTEM_CATALOGS = frozenset({"catalog.system", "catalog.platform"})
-# 租户角色可绑定的根目录
-TENANT_CATALOGS = frozenset({"catalog.tenant"})
+
+
+def _discover_tenant_catalogs() -> frozenset[str]:
+    """种子中无父节点、且非系统域的 catalog.* 根目录，均为租户可绑定域。"""
+    return frozenset(
+        seed.code
+        for seed in PERMISSION_SEEDS
+        if seed.kind == "catalog" and seed.parent is None and seed.code not in SYSTEM_CATALOGS
+    )
+
+
+# 租户角色可绑定的根目录（随 permission_seed 业务目录自动扩展）
+TENANT_CATALOGS = _discover_tenant_catalogs()
 
 
 def _build_root_catalog_map() -> dict[str, str]:

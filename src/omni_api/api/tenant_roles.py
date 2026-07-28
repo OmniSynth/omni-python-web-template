@@ -127,7 +127,7 @@ async def set_tenant_role_permissions(
     if cross_catalog:
         raise HTTPException(
             status_code=400,
-            detail="权限与角色类型不匹配：租户角色仅可绑定训练/设置/订单目录",
+            detail="权限与角色类型不匹配：租户角色仅可绑定租户业务目录",
         )
     updated = await _repo(tenant_id).set_role_permissions(role_id, body.permissions, tenant_id)
     assert updated is not None

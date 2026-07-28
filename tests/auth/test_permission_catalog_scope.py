@@ -37,3 +37,19 @@ def test_tenant_role_rejects_system_catalog_permissions() -> None:
     assert "menu.users" in invalid
     assert "menu.orgs" in invalid
     assert "menu.depts" not in invalid
+
+
+def test_tenant_role_accepts_settings_catalog_permissions() -> None:
+    invalid = invalid_codes_for_role_type(
+        ROLE_TYPE_TENANT,
+        ["menu.depts", "menu.dev_params", "menu.profile", "dev_param.list"],
+    )
+    assert invalid == []
+
+
+def test_tenant_root_catalogs_match_seed_non_system_roots() -> None:
+    from omni_api.auth.permission_catalog_scope import TENANT_CATALOGS
+
+    assert TENANT_CATALOGS == frozenset({"catalog.tenant"})
+    assert "catalog.system" not in TENANT_CATALOGS
+    assert "catalog.platform" not in TENANT_CATALOGS
