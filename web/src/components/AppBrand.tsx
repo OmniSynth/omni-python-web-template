@@ -1,7 +1,10 @@
+import { useEffect, useState } from "react";
 import { APP_BRAND_NAME } from "@/lib/brand";
+import { peekRacedHomeImageUrl, raceHomeImageUrl } from "@/lib/race-cdn-image";
 import { cn } from "@/lib/utils";
 
-const LOGO_SRC = "/favicon.png";
+const LOGO_FILE = "favicon.png";
+const LOGO_LOCAL = `/images/${LOGO_FILE}`;
 
 const sizeClass = {
   sm: "h-6 w-6",
@@ -18,16 +21,35 @@ type AppBrandProps = {
   nameClassName?: string;
 };
 
-/** 品牌标：复用站点 favicon 图作为 logo，可选附带品牌名。 */
+/** 品牌标：favicon 经 JSDMirror / jsDelivr 竞速加速，失败回退本地图。 */
 export function AppBrand({ size = "md", showName = true, className, nameClassName }: AppBrandProps) {
+  const [logoSrc, setLogoSrc] = useState(() => peekRacedHomeImageUrl(LOGO_FILE) ?? LOGO_LOCAL);
+
+  useEffect(() => {
+    let active = true;
+    void raceHomeImageUrl(LOGO_FILE)
+      .then((url) => {
+        if (active) setLogoSrc(url);
+      })
+      .catch(() => {
+        if (active) setLogoSrc(LOGO_LOCAL);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <span className={cn("inline-flex min-w-0 items-center gap-2", className)}>
       <img
-        src={LOGO_SRC}
+        src={logoSrc}
         alt=""
         width={36}
         height={36}
         className={cn("shrink-0 bg-transparent object-contain", sizeClass[size])}
+        onError={() => {
+          if (logoSrc !== LOGO_LOCAL) setLogoSrc(LOGO_LOCAL);
+        }}
       />
       {showName ? (
         <span className={cn("truncate font-medium tracking-tight text-foreground", nameClassName)}>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import { homeImageLocalFallback, peekRacedHomeImageUrl, raceHomeImageUrl } from "@/lib/race-cdn-image";
 import { cn } from "@/lib/utils";
-import { homeImageLocalFallback, peekRacedHomeImageUrl, raceHomeImageUrl } from "../race-cdn-image";
 
 type RacedCdnImageProps = {
   file: string;
