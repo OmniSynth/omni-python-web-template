@@ -1,4 +1,4 @@
-/** 首页截图 CDN：一次性探测 JSDMirror / jsDelivr 延迟，全站图片共用胜出源。 */
+/** 静态图 CDN：一次性探测 JSDMirror / jsDelivr 延迟，品牌标与首页截图共用胜出源。 */
 
 const HOME_IMAGE_CDNS = [
   "https://cdn.jsdmirror.com/gh/OmniSynth/omni-python-web-template@main/docs/images",
