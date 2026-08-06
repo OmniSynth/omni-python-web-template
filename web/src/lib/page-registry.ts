@@ -23,6 +23,7 @@ const DeptsPage = lazyNamedPage(() => import("@/pages/DeptsPage"), "DeptsPage");
 const ProfilePage = lazyNamedPage(() => import("@/pages/ProfilePage"), "ProfilePage");
 const DevParamsPage = lazyNamedPage(() => import("@/pages/DevParamsPage"), "DevParamsPage");
 const SysDevParamsPage = lazyNamedPage(() => import("@/pages/SysDevParamsPage"), "SysDevParamsPage");
+const DownloadCenterPage = lazyNamedPage(() => import("@/pages/DownloadCenterPage"), "DownloadCenterPage");
 
 /** 菜单 component_key → 页面组件（新增页面须在此注册）。 */
 export const PAGE_REGISTRY: Record<string, LazyExoticComponent<ComponentType>> = {
@@ -36,6 +37,7 @@ export const PAGE_REGISTRY: Record<string, LazyExoticComponent<ComponentType>> =
   tenants: TenantsPage,
   depts: DeptsPage,
   profile: ProfilePage,
+  download_center: DownloadCenterPage,
   dev_params: DevParamsPage,
   sys_dev_params: SysDevParamsPage,
 };
@@ -56,6 +58,7 @@ const PAGE_IMPORTERS: Partial<Record<string, () => Promise<unknown>>> = {
   tenants: () => import("@/pages/TenantsPage"),
   depts: () => import("@/pages/DeptsPage"),
   profile: () => import("@/pages/ProfilePage"),
+  download_center: () => import("@/pages/DownloadCenterPage"),
   dev_params: () => import("@/pages/DevParamsPage"),
   sys_dev_params: () => import("@/pages/SysDevParamsPage"),
 };

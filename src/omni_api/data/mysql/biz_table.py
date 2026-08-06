@@ -12,6 +12,7 @@ BIZ_TABLE_BASES: tuple[str, ...] = (
     "user_data_scope",
     "dev_param_group",
     "dev_params",
+    "export_job",
 )
 
 # 系统级共享表

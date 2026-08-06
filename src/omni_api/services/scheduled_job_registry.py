@@ -42,6 +42,16 @@ async def _run_tenant_expiry_check(
     return await sync_expired_tenant_session_flags(tenant_id=tenant_id)
 
 
+async def _run_export_job_cleanup(
+    manual: bool,
+    tenant_id: int | None,
+    params: Mapping[str, Any] | None = None,
+) -> JobRunOutcome:
+    from omni_api.services.export_job_cleanup import cleanup_expired_export_jobs_job
+
+    return await cleanup_expired_export_jobs_job(manual, tenant_id, params)
+
+
 SCHEDULED_JOB_DEFINITIONS: tuple[ScheduledJobDefinition, ...] = (
     ScheduledJobDefinition(
         code="tenant_expiry_check",
@@ -50,6 +60,14 @@ SCHEDULED_JOB_DEFINITIONS: tuple[ScheduledJobDefinition, ...] = (
         default_cron_expr="*/5 * * * * *",
         handler=_run_tenant_expiry_check,
         scope="system",
+    ),
+    ScheduledJobDefinition(
+        code="export_job_cleanup",
+        name="导出文件过期清理",
+        description="删除已过期的导出任务记录及对象存储文件（默认保留 24 小时）",
+        default_cron_expr="25 * * * *",
+        handler=_run_export_job_cleanup,
+        scope="tenant",
     ),
 )
 

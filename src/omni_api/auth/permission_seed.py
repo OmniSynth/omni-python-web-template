@@ -35,6 +35,8 @@ TENANT_ADMIN_BASELINE_CODES: tuple[str, ...] = (
     "auth.tenants",
     "menu.profile",
     "menu.tenant_scheduled_jobs",
+    "menu.download_center",
+    "export.job.list",
     "user.profile.read",
     "user.profile.update",
     "user.profile.change_password",
@@ -243,6 +245,16 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
             "user.profile.change_password",
             "user.profile.identity",
         ),
+    ),
+    _s(
+        "menu.download_center",
+        "下载中心",
+        "menu",
+        parent="catalog.tenant",
+        sort_order=6,
+        route_path="/download-center",
+        component_key="download_center",
+        api_codes=("export.job.list",),
     ),
     _s(
         "menu.dev_params",
@@ -457,6 +469,7 @@ PERMISSION_SEEDS: tuple[PermissionSeed, ...] = (
     _s("user.profile.change_password", "修改密码", "api"),
     _s("user.profile.identity", "实名认证", "api"),
     _s("dev_param.list", "开发参数列表", "api"),
+    _s("export.job.list", "导出任务列表", "api"),
 )
 
 ASSIGNABLE_KINDS: frozenset[PermissionKind] = frozenset({"catalog", "menu", "button"})
@@ -534,6 +547,10 @@ API_ROUTE_SEEDS: tuple[tuple[str, str, str], ...] = (
     ("user.profile.identity", "POST", "/api/v1/users/me/identity"),
     ("dev_param.list", "GET", "/api/v1/dev-params/*"),
     ("dev_param.update", "PUT", "/api/v1/dev-params/*"),
+    ("export.job.list", "GET", "/api/v1/export-jobs"),
+    ("export.job.list", "GET", "/api/v1/export-jobs/*"),
+    ("export.job.list", "POST", "/api/v1/export-jobs/mark-read"),
+    ("export.job.list", "POST", "/api/v1/export-jobs/*/mark-read"),
 )
 
 
@@ -554,6 +571,7 @@ DEFAULT_ROLE_DEFS: dict[str, tuple[str, str, list[str]]] = {
             "menu.profile",
             "menu.dev_params",
             "menu.tenant_scheduled_jobs",
+            "menu.download_center",
             "tenant.user.create",
             "tenant.user.update",
             "tenant.user.enable",
@@ -573,6 +591,7 @@ DEFAULT_ROLE_DEFS: dict[str, tuple[str, str, list[str]]] = {
             "menu.depts",
             "menu.profile",
             "menu.tenant_scheduled_jobs",
+            "menu.download_center",
         ],
     ),
 }

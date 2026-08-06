@@ -12,6 +12,7 @@ from omni_api.data.mysql.ddl_comment import (
     cmt,
     table_cmt,
 )
+from omni_api.data.mysql.export_job_sql import export_job_ddl
 
 
 def dept_ddl(tenant_id: int) -> str:
@@ -149,6 +150,7 @@ def all_biz_ddl_statements(tenant_id: int) -> list[str]:
         user_data_scope_ddl,
         dev_param_group_ddl,
         dev_params_ddl,
+        export_job_ddl,
     )
     statements: list[str] = []
     for builder in builders:
