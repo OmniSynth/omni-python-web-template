@@ -155,6 +155,7 @@ cd web && npm run build
 | `/roles` | `RolesPage`（租户） |
 | `/depts` | `DeptsPage`（租户） |
 | `/profile` | `ProfilePage` |
+| `/download-center` | `DownloadCenterPage` |
 | `/dev-params` | `DevParamsPage` |
 | `/sys/users` | `UsersPage`（平台） |
 | `/sys/roles` | `RolesPage`（平台） |

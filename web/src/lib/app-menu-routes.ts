@@ -12,6 +12,7 @@ export const APP_MENU_ROUTES: Array<{ code: string; path: string; componentKey: 
   { code: "menu.tenant_roles", path: "roles", componentKey: "roles" },
   { code: "menu.depts", path: "depts", componentKey: "depts" },
   { code: "menu.profile", path: "profile", componentKey: "profile" },
+  { code: "menu.download_center", path: "download-center", componentKey: "download_center" },
   { code: "menu.dev_params", path: "dev-params", componentKey: "dev_params" },
   { code: "menu.tenant_scheduled_jobs", path: "scheduled-jobs", componentKey: "tenant_scheduled_jobs" },
 ];

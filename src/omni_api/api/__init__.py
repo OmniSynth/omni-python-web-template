@@ -4,9 +4,11 @@ from omni_api.api.auth import router as auth_router
 from omni_api.api.audit import router as audit_router
 from omni_api.api.depts import router as depts_router
 from omni_api.api.dev_params import router as dev_params_router
+from omni_api.api.export_jobs import router as export_jobs_router
 from omni_api.api.health import router as health_router
 from omni_api.api.orgs import router as orgs_router
 from omni_api.api.permissions import router as permissions_router
+from omni_api.api.realtime_ws import router as realtime_ws_router
 from omni_api.api.roles import router as roles_router
 from omni_api.api.scheduled_jobs import router as scheduled_jobs_router
 from omni_api.api.sys_dev_params import router as sys_dev_params_router
@@ -24,9 +26,11 @@ __all__ = [
     "audit_router",
     "depts_router",
     "dev_params_router",
+    "export_jobs_router",
     "health_router",
     "orgs_router",
     "permissions_router",
+    "realtime_ws_router",
     "roles_router",
     "scheduled_jobs_router",
     "sys_dev_params_router",

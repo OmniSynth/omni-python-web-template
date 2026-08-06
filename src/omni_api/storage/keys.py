@@ -30,19 +30,13 @@ def avatar_object_key(basic_path: str, user_id: int, filename: str) -> str:
     )
 
 
-def tenant_adx_object_key(
-    basic_path: str,
-    kind: str,
-    name_stem: str,
-    ext: str,
-) -> str:
-    """租户 ADX 对象键。basic_path 须已含租户前缀（如 omni/static/{tenant_id}）。"""
-    safe_ext = ext if ext.startswith(".") else f".{ext}"
-    if len(safe_ext) > 16:
-        safe_ext = ".bin"
+def tenant_export_object_key(basic_path: str, job_id: int, filename: str) -> str:
+    """租户导出产物对象键。basic_path 须已含租户前缀。"""
+    safe_name = PurePosixPath(filename).name.strip() or "export.xlsx"
+    safe_name = safe_name.replace("..", "_")[:180]
     return join_object_key(
         normalize_basic_path(basic_path),
-        "adx",
-        kind,
-        f"{name_stem}{safe_ext}",
+        "exports",
+        str(job_id),
+        safe_name,
     )

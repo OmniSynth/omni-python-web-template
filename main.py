@@ -18,9 +18,11 @@ from omni_api.api import (
     auth_router,
     depts_router,
     dev_params_router,
+    export_jobs_router,
     health_router,
     orgs_router,
     permissions_router,
+    realtime_ws_router,
     roles_router,
     scheduled_jobs_router,
     sys_dev_params_router,
@@ -44,6 +46,7 @@ from omni_api.data.mysql.sql_audit_listener import (
     stop_slow_sql_worker,
 )
 from omni_api.services.auth_service import AuthService
+from omni_api.services.realtime_hub import realtime_hub
 from omni_api.services.scheduled_job_manager import ScheduledJobManager
 
 STATIC_DIR = Path(__file__).parent / "src" / "omni_api" / "web" / "static"
@@ -67,6 +70,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # 仅建 t_sys_* 系统表；租户 t_biz_* 分表与权限由 scripts/sync_rbac.py 处理
     await AuthService().bootstrap()
     await ScheduledJobManager.get().startup()
+    await realtime_hub().startup()
     await start_slow_sql_worker()
     bind_host = getattr(app.state, "bind_host", None)
     bind_port = getattr(app.state, "bind_port", None)
@@ -75,6 +79,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
+        await realtime_hub().shutdown()
         await ScheduledJobManager.get().shutdown()
         await stop_slow_sql_worker()
 
@@ -128,6 +133,8 @@ def create_app(*, api: bool = True, web: bool = True) -> FastAPI:
         app.include_router(depts_router)
         app.include_router(dev_params_router)
         app.include_router(sys_dev_params_router)
+        app.include_router(export_jobs_router)
+        app.include_router(realtime_ws_router)
     if web:
         _mount_spa(app)
     return app

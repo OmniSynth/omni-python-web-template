@@ -40,6 +40,7 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 | `/roles` | 租户角色与数据范围（需 `menu.tenant_roles`） |
 | `/depts` | 租户部门管理（需 `menu.depts`） |
 | `/profile` | 个人中心：昵称、头像、密码、实名认证（需 `menu.profile`） |
+| `/download-center` | 下载中心（需 `menu.download_center`；仅本人导出记录） |
 | `/sys/users` | 平台用户管理（需 `menu.users`） |
 | `/sys/roles` | 平台角色、权限与数据范围（需 `menu.roles`） |
 | `/sys/permissions` | 权限管理（需 `menu.permissions`） |
@@ -244,6 +245,7 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 
 - cron：5 段或 6 段（秒级）。
 - 内置 `tenant_expiry_check`：`scope=system`，默认 `*/5 * * * * *`。
+- 内置 `export_job_cleanup`：`scope=tenant`，默认 `25 * * * *`（导出过期清理）。
 - 租户任务到点后按启用且未过期租户扇出；单租户可用 stop+`tenant_id` 停止其调度；全局或本租户调度已停止时**拒绝**手动触发。
 - **过期租户**不可执行租户任务。
 
@@ -252,6 +254,39 @@ OMNI_PROFILE=local uv run scripts/sync_rbac.py
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/api/v1/health` | 健康检查（无需登录） |
+
+### 导出任务 / 下载中心 `/api/v1/export-jobs`
+
+| 方法 | 路径 | 权限 | 说明 |
+|---|---|---|---|
+| GET | `` | `export.job.list` | 仅本人导出任务分页 |
+| GET | `/badge` | `export.job.list` | 顶栏角标 |
+| POST | `/mark-read` | `export.job.list` | 完成未读标为已读 |
+| GET | `/{id}` | `export.job.list` | 本人任务详情 |
+| POST | `/{id}/mark-read` | `export.job.list` | 单条已读 |
+
+详见 [export-jobs.md](export-jobs.md)。业务域通过 `register_export_builder` + `ExportJobService.enqueue` 入队。
+
+### 实时通道 WebSocket `/api/v1/ws`
+
+单连接多订阅。握手：`WS /api/v1/ws?token=<session_token>`。
+
+| `op`（C→S） | 说明 |
+|---|---|
+| `subscribe` / `unsubscribe` | `channels: string[]` |
+| `ping` | 心跳 |
+
+| `op`（S→C） | 说明 |
+|---|---|
+| `subscribed` / `unsubscribed` / `pong` | 确认 |
+| `event` | `channel` + `type` + `payload` |
+| `error` | `message` |
+
+| 频道 | 权限 | 用途 |
+|---|---|---|
+| `export_job.badge` | `export.job.list` | 顶栏角标 |
+| `export_job.mine` | `export.job.list` | 本人导出任务变更 |
+| `auth.session` | 登录即可 | 会话快照（权限/过期等） |
 
 ### 开发参数 `/api/v1/dev-params`（需 `dev_param.list` / `dev_param.update`）
 
