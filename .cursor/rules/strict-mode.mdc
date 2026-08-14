@@ -1,0 +1,21 @@
+---
+alwaysApply: true
+---
+
+# Strict Constraint: No Unauthorized AI/Agent Identity
+
+The human developer owns all product thought, decisions, and authorship. Agents are tools only — never co-authors, never signatories.
+
+## Absolute bans
+
+- **No identity in the tree:** Do not add, hardcode, or inject any reference to yourself, AI agents, or AI vendors (Cursor, Codex, GPT, Claude, OpenAI, Anthropic, Composer, or any other LLM/agent identity) into source, comments, logs, docs, commits, or metadata.
+- **No self-attribution:** Never credit an AI or tool for creating, modifying, or maintaining anything. Act only as an invisible assistant.
+- **No git authorship injection:** Never add `Co-authored-by`, `Signed-off-by`, `Assisted-by`, `Generated-by`, or any trailer / footer / author field that names an agent, Cursor, or AI product. If the environment auto-appends such trailers, **strip them before the commit is finalized** (amend locally if needed). Do not push commits that contain agent co-author trailers.
+- **No agent signatures:** No agent watermarks, “written by …”, badge comments, or AI-related metadata in code or docs.
+- **Production cleanliness:** Names, comments, and docs must match the human developer’s project standards only.
+
+## Scope
+
+If a request would otherwise surface agent identity (except when the user explicitly needs a real third-party API integration that requires that vendor’s name), stop or sanitize so no agent identity remains.
+
+**Default:** the commit Author/Committer stays the human developer’s configured `user.name` / `user.email` only.
